@@ -1,5 +1,5 @@
 /* ================================================================
-   ระบบบริหารโครงการงบประมาณ — โรงเรียนบ้านคลอง 14  v3
+   ระบบบริหารโครงการงบประมาณ — โรงเรียนบ้านคลอง 14  v4
 ================================================================ */
 
 const SL={pending:'รอตรวจสอบ',reviewing:'กำลังตรวจสอบ',approved:'อนุมัติแล้ว',rejected:'ไม่อนุมัติ'};
@@ -10,27 +10,109 @@ const RC={admin:'#8B5CF6',finance:'#3B82F6',teacher:'#22C55E'};
 let ME=null, PROJECTS=[], STATUS_F='all';
 let budgetRows=[], stepRows=[], evalRows=[], signerRows=[];
 
+/* ---- Cache layer ---- */
+const CACHE={}, CACHE_TTL=60000; // 60 วินาที
+function cacheGet(k){ const v=CACHE[k]; return v&&Date.now()-v.ts<CACHE_TTL?v.data:null; }
+function cacheSet(k,data){ CACHE[k]={data,ts:Date.now()}; }
+function cacheClear(){ Object.keys(CACHE).forEach(k=>delete CACHE[k]); }
+
 /* ================================================================ BOOT */
+const GUEST_EMAIL = 'admin@school.ac.th'; // email สาธารณะสำหรับดูข้อมูล
+
 document.addEventListener('DOMContentLoaded', async()=>{
   document.getElementById('bud-year').textContent = new Date().getFullYear()+543;
   initNav();
-  const r = await apiGet('getMe',{});
-  if(!r.ok){
-    document.getElementById('main').innerHTML=
-      `<div style="padding:48px;text-align:center;color:#EF4444;font-size:15px;line-height:2.4">
-        ⚠️ ไม่พบผู้ใช้ <b>"${USER_EMAIL}"</b> ในระบบ<br>
-        <span style="color:#7C8FA8;font-size:13px">กรุณารัน <b>setup()</b> ใน Apps Script ก่อน<br>
-        แล้วแก้ <b>USER_EMAIL</b> ใน index.html</span></div>`;
-    return;
+  // ลองโหลด session
+  const saved = localStorage.getItem('school_user_email');
+  if(saved){ await tryLogin(saved, true); }
+  else { enterGuest(); }
+});
+
+/* -------- Auth helpers -------- */
+async function tryLogin(email, silent=false){
+  if(!silent){
+    const btn=document.getElementById('btn-login-submit');
+    btn.disabled=true; btn.textContent='กำลังตรวจสอบ...';
   }
-  ME=r.user;
-  document.getElementById('sb-avatar').textContent = ME.name[0];
+  const r = await apiRaw('getMe',{userEmail:email});
+  if(!silent){
+    const btn=document.getElementById('btn-login-submit');
+    btn.disabled=false; btn.textContent='เข้าสู่ระบบ';
+  }
+  if(r && r.ok){
+    ME=r.user; USER_EMAIL=email;
+    localStorage.setItem('school_user_email', email);
+    applyUser();
+    closeLogin();
+    nav('dashboard');
+  } else {
+    localStorage.removeItem('school_user_email');
+    ME=null; USER_EMAIL='';
+    if(!silent){
+      showLoginErr('⚠️ ไม่พบอีเมลนี้ในระบบ กรุณาตรวจสอบอีกครั้ง');
+    } else { enterGuest(); }
+  }
+}
+
+function applyUser(){
+  document.getElementById('sb-avatar').textContent = ME.name?ME.name[0]:'?';
   document.getElementById('sb-name').textContent   = ME.name;
   document.getElementById('sb-role').textContent   = RL[ME.role]||ME.role;
-  document.querySelectorAll('.teacher-only').forEach(el=>el.classList.toggle('hidden',ME.role!=='teacher'));
-  document.querySelectorAll('.admin-only').forEach(el=>el.classList.toggle('hidden',ME.role!=='admin'));
+  document.querySelectorAll('.teacher-only').forEach(el=>el.classList.toggle('hidden', ME.role!=='teacher'));
+  document.querySelectorAll('.admin-only').forEach(el=>el.classList.toggle('hidden', ME.role!=='admin'));
+  document.querySelectorAll('.finance-only').forEach(el=>el.classList.toggle('hidden', ME.role!=='finance'&&ME.role!=='admin'));
+  document.getElementById('sb-login-area').innerHTML=
+    `<button class="btn-login btn-logout" onclick="doLogout()">🚪 ออกจากระบบ</button>`;
+}
+
+function enterGuest(){
+  ME=null; USER_EMAIL='';
+  document.getElementById('sb-avatar').textContent='?';
+  document.getElementById('sb-name').textContent='ผู้เยี่ยมชม';
+  document.getElementById('sb-role').textContent='ยังไม่ได้เข้าสู่ระบบ';
+  document.querySelectorAll('.teacher-only').forEach(el=>el.classList.add('hidden'));
+  document.querySelectorAll('.admin-only').forEach(el=>el.classList.add('hidden'));
+  document.querySelectorAll('.finance-only').forEach(el=>el.classList.add('hidden'));
+  document.getElementById('sb-login-area').innerHTML=
+    `<button class="btn-login" onclick="openLogin()">🔑 เข้าสู่ระบบ</button>`;
   nav('dashboard');
+}
+
+function doLogout(){
+  localStorage.removeItem('school_user_email');
+  enterGuest();
+  toast('ออกจากระบบแล้ว');
+}
+
+function openLogin(){
+  document.getElementById('login-modal').classList.remove('hidden');
+  document.getElementById('login-err').classList.add('hidden');
+  document.getElementById('login-email').value='';
+  setTimeout(()=>document.getElementById('login-email').focus(),80);
+}
+function closeLogin(){
+  document.getElementById('login-modal').classList.add('hidden');
+}
+function showLoginErr(msg){
+  const el=document.getElementById('login-err');
+  el.textContent=msg; el.classList.remove('hidden');
+}
+function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  if(!email){showLoginErr('กรุณากรอกอีเมล');return;}
+  tryLogin(email);
+}
+document.addEventListener('click',e=>{
+  if(e.target===document.getElementById('login-modal')) closeLogin();
 });
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!document.getElementById('login-modal').classList.contains('hidden')) doLogin();
+  if(e.key==='Escape') closeLogin();
+});
+
+/* ================================================================ MOBILE SIDEBAR */
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('sb-overlay').classList.add('show'); }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sb-overlay').classList.remove('show'); }
 
 /* ================================================================ NAV */
 function initNav(){
@@ -42,34 +124,104 @@ function initNav(){
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     t.classList.add('active'); STATUS_F=t.dataset.s; renderProjects();
   });
-  document.getElementById('search').addEventListener('input',renderProjects);
+  let _debounce;
+  document.getElementById('search').addEventListener('input',()=>{ clearTimeout(_debounce); _debounce=setTimeout(renderProjects,220); });
 }
+
+const PAGE_TITLES={'dashboard':'ภาพรวม','projects':'โครงการ','form':'เสนอโครงการ','detail':'รายละเอียด','users':'ผู้ใช้งาน','budget-config':'กำหนดงบ','log':'ประวัติ'};
 
 function nav(page,props={}){
   document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
   document.querySelectorAll('.nav-item').forEach(a=>a.classList.remove('active'));
   document.getElementById('page-'+page)?.classList.remove('hidden');
   document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
+  document.getElementById('mobile-title').textContent = PAGE_TITLES[page]||'';
   window.scrollTo(0,0);
-  if(page==='dashboard') loadDashboard();
-  if(page==='projects')  loadProjects();
-  if(page==='form')      initForm(props);
-  if(page==='detail')    loadDetail(props.id);
-  if(page==='users')     loadUsers();
+  closeSidebar();
+  if(page==='dashboard')     loadDashboard();
+  if(page==='projects')      loadProjects();
+  if(page==='form')          initForm(props);
+  if(page==='detail')        loadDetail(props.id);
+  if(page==='users')         loadUsers();
+  if(page==='budget-config') loadBudgetConfig();
+  if(page==='log')           loadLog();
 }
 
 /* ================================================================ DASHBOARD */
 async function loadDashboard(){
-  document.getElementById('greet').textContent=`สวัสดี, ${ME.name} 👋`;
-  const r=await apiGet('getDashboard',{});
-  if(!r.ok) return;
-  const d=r.dashboard;
-  document.getElementById('kpi-count').querySelector('.kpi-n').textContent=d.count;
-  document.getElementById('kpi-req').querySelector('.kpi-n').textContent=fmt(d.totalReq);
-  document.getElementById('kpi-appr').querySelector('.kpi-n').textContent=fmt(d.totalAppr);
-  document.getElementById('kpi-spent').querySelector('.kpi-n').textContent=fmt(d.totalSpent);
-  const tot=d.count||1;
-  document.getElementById('dash-status').innerHTML=
+  const isFinance = ME && (ME.role==='finance'||ME.role==='admin');
+  document.getElementById('greet').textContent     = ME ? `สวัสดี, ${ME.name} 👋` : 'ภาพรวมระบบงบประมาณ';
+  document.getElementById('dash-desc').textContent = isFinance ? 'รายการที่ต้องดำเนินการและภาพรวมงบประมาณ' : 'สรุปโครงการและงบประมาณประจำปี';
+
+  // skeleton KPIs
+  ['kpi-count','kpi-req','kpi-appr','kpi-spent'].forEach(id=>{
+    document.getElementById(id).querySelector('.kpi-n').innerHTML='<span class="skel skel-num"></span>';
+  });
+
+  const email = ME ? ME.email : GUEST_EMAIL;
+  const ckey  = 'dash_'+email;
+
+  // ---- fetch ทั้งหมดพร้อมกัน ----
+  let dashRes = cacheGet(ckey);
+  let cfgRes  = cacheGet('cfg');
+  const needFetch = !dashRes || !cfgRes;
+
+  const fetches = [
+    needFetch ? apiRaw('getDashboard',{userEmail:email}) : Promise.resolve(dashRes),
+    needFetch ? apiRaw('getBudgetConfig',{userEmail:email}) : Promise.resolve(cfgRes),
+    // finance ดึง project list + expense requests เพิ่ม
+    isFinance ? apiRaw('getProjects',{userEmail:email}) : Promise.resolve(null),
+    isFinance ? apiRaw('getExpenseRequests',{userEmail:email}) : Promise.resolve(null),
+  ];
+  const [dr, cr, pr, er] = await Promise.all(fetches);
+
+  if(needFetch){
+    if(dr.ok) cacheSet(ckey, dr);
+    if(cr.ok) cacheSet('cfg', cr);
+  }
+  dashRes = dr; cfgRes = cr;
+  if(!dashRes.ok) return;
+  const d = dashRes.dashboard;
+
+  // ---- Finance Action Panel ----
+  const panel = document.getElementById('finance-panel');
+  if(isFinance && pr && pr.ok){
+    panel.style.display = 'block';
+    renderFinancePanel(pr.projects, er?.requests||[]);
+  } else {
+    panel.style.display = 'none';
+  }
+
+  // ---- Budget Banner ----
+  const totalBudget = cfgRes.ok ? Number(cfgRes.config.total_budget||0) : 0;
+  const banner = document.getElementById('budget-banner');
+  if(totalBudget > 0){
+    banner.style.display = 'block';
+    const remain   = totalBudget - d.totalAppr;
+    const apprPct  = Math.min(Math.round(d.totalAppr  / totalBudget * 100), 100);
+    const spentPct = Math.min(Math.round(d.totalSpent / totalBudget * 100), 100);
+    document.getElementById('bb-total').textContent  = fmt(totalBudget) + ' บาท';
+    document.getElementById('bb-appr').textContent   = fmt(d.totalAppr)  + ' บาท';
+    document.getElementById('bb-spent').textContent  = fmt(d.totalSpent) + ' บาท';
+    document.getElementById('bb-remain').textContent = fmt(remain) + ' บาท';
+    document.getElementById('bb-appr-pct').textContent  = apprPct;
+    document.getElementById('bb-spent-pct').textContent = spentPct;
+    document.getElementById('bb-bar-appr').style.width  = apprPct  + '%';
+    document.getElementById('bb-bar-spent').style.width = spentPct + '%';
+    document.getElementById('bb-remain').style.color = remain < 0 ? '#EF4444' : remain < totalBudget*0.1 ? '#F59E0B' : '#22C55E';
+  } else {
+    banner.style.display = 'none';
+  }
+
+  // ---- KPIs ----
+  document.getElementById('kpi-count').querySelector('.kpi-n').textContent = d.count;
+  document.getElementById('kpi-req').querySelector('.kpi-n').textContent   = fmt(d.totalReq);
+  document.getElementById('kpi-appr').querySelector('.kpi-n').textContent  = fmt(d.totalAppr);
+  document.getElementById('kpi-spent').querySelector('.kpi-n').textContent = fmt(d.totalSpent);
+
+  // ---- Status rows ----
+  const tot = d.count||1;
+  document.getElementById('dash-status').innerHTML =
     Object.entries(d.byStatus).map(([s,c])=>`
       <div class="s-row">
         <div class="s-dot" style="background:${SC[s]}"></div>
@@ -77,28 +229,264 @@ async function loadDashboard(){
         <div class="s-count">${c}</div>
         <div class="s-bar-wrap"><div class="s-bar" style="width:${Math.round(c/tot*100)}%;background:${SC[s]}"></div></div>
       </div>`).join('');
-  const depts=Object.entries(d.byDept||{}).sort((a,b)=>b[1].requested-a[1].requested).slice(0,6);
-  const tr=d.totalReq||1;
-  document.getElementById('dash-dept').innerHTML=depts.length
-    ?depts.map(([dn,dd])=>`<div class="dept-row"><div class="dept-head"><span class="dept-name">${esc(dn)}</span><span class="dept-amt">${fmt(dd.requested)} บาท</span></div><div class="mini-bar"><div class="mini-fill" style="width:${Math.round(dd.requested/tr*100)}%"></div></div></div>`).join('')
-    :'<div style="color:#7C8FA8;font-size:13px">ยังไม่มีข้อมูล</div>';
+
+  // ---- Dept bars ----
+  const depts = Object.entries(d.byDept||{}).sort((a,b)=>b[1].requested-a[1].requested).slice(0,6);
+  const tr = d.totalReq||1;
+  document.getElementById('dash-dept').innerHTML = depts.length
+    ? depts.map(([dn,dd])=>`<div class="dept-row"><div class="dept-head"><span class="dept-name">${esc(dn)}</span><span class="dept-amt">${fmt(dd.requested)} บาท</span></div><div class="mini-bar"><div class="mini-fill" style="width:${Math.round(dd.requested/tr*100)}%"></div></div></div>`).join('')
+    : '<div style="color:#7C8FA8;font-size:13px">ยังไม่มีข้อมูล</div>';
+
+  drawStatusChart(d.byStatus, d.count);
+  drawBudgetChart(d, totalBudget);
+  drawDeptChart(d.byDept);
+}
+
+/* -------- Finance Action Panel -------- */
+function renderFinancePanel(projects, expRequests){
+  const pending   = projects.filter(p=>p.status==='pending');
+  const reviewing = projects.filter(p=>p.status==='reviewing');
+  const approved  = projects.filter(p=>p.status==='approved');
+  const pendingExp= expRequests.filter(r=>r.status==='pending');
+
+  // Action KPI cards
+  document.getElementById('action-kpis').innerHTML=`
+    <div class="action-kpi urgent" onclick="scrollToList('list-pending-proj')">
+      <div class="action-kpi-n">${pending.length+reviewing.length}</div>
+      <div class="action-kpi-l">⏳ รอพิจารณา</div>
+    </div>
+    <div class="action-kpi warn" onclick="scrollToList('list-exp-requests')">
+      <div class="action-kpi-n">${pendingExp.length}</div>
+      <div class="action-kpi-l">💸 รออนุมัติเบิก</div>
+    </div>
+    <div class="action-kpi ok">
+      <div class="action-kpi-n">${approved.length}</div>
+      <div class="action-kpi-l">✅ อนุมัติแล้ว</div>
+    </div>
+    <div class="action-kpi info">
+      <div class="action-kpi-n">${projects.filter(p=>p.status==='rejected').length}</div>
+      <div class="action-kpi-l">❌ ไม่อนุมัติ</div>
+    </div>`;
+
+  // badge counts
+  document.getElementById('badge-pending').textContent   = pending.length+reviewing.length+' รายการ';
+  document.getElementById('badge-exp-req').textContent   = pendingExp.length+' รายการ';
+  document.getElementById('badge-approved').textContent  = approved.length+' โครงการ';
+
+  // --- โครงการรอพิจารณา ---
+  const pendingList = [...pending,...reviewing].sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+  document.getElementById('list-pending-proj').innerHTML = pendingList.length
+    ? pendingList.map(p=>`
+      <div class="action-item" onclick="nav('detail',{id:'${p.project_id}'})">
+        <div class="action-item-left">
+          <span class="badge badge-${p.status}">${SL[p.status]}</span>
+          <div class="action-item-name">${esc(p.title)}</div>
+          <div class="action-item-sub">${esc(p.dept)} · ${esc(p.owner_name)} · ${fdate(p.created_at)}</div>
+        </div>
+        <div class="action-item-right">
+          <div class="action-item-amt">${fmt(p.budget_requested)}</div>
+          <div class="action-item-unit">บาท</div>
+          <div class="action-item-arrow">→</div>
+        </div>
+      </div>`).join('')
+    : '<div class="empty" style="padding:20px 0;font-size:13px">✅ ไม่มีโครงการรอพิจารณา</div>';
+
+  // --- คำขอเบิกรออนุมัติ ---
+  document.getElementById('list-exp-requests').innerHTML = pendingExp.length
+    ? pendingExp.map(r=>`
+      <div class="action-item exp-action" onclick="nav('detail',{id:'${r.project_id}'})">
+        <div class="action-item-left">
+          <div class="action-item-name">${esc(r.item)}</div>
+          <div class="action-item-sub">
+            โครงการ <b>${esc(r.project_id)}</b> · ${esc(r.requested_name||r.requested_by)} · ${fdate(r.created_at)}
+          </div>
+          ${r.note?`<div class="action-item-note">${esc(r.note)}</div>`:''}
+        </div>
+        <div class="action-item-right">
+          <div class="action-item-amt" style="color:#F59E0B">${fmt(r.amount)}</div>
+          <div class="action-item-unit">บาท</div>
+          <div class="action-item-arrow">→</div>
+        </div>
+      </div>`).join('')
+    : '<div class="empty" style="padding:20px 0;font-size:13px">✅ ไม่มีคำขอรออนุมัติ</div>';
+
+  // --- โครงการอนุมัติแล้ว ติดตามงบ ---
+  const approvedSorted = [...approved].sort((a,b)=>Number(b.budget_approved)-Number(a.budget_approved));
+  document.getElementById('list-approved-proj').innerHTML = approvedSorted.length
+    ? `<div style="overflow-x:auto"><table class="data-table">
+        <thead><tr>
+          <th>ชื่อโครงการ</th><th>หน่วยงาน</th>
+          <th class="right">งบอนุมัติ</th><th class="right">เบิกจ่ายแล้ว</th>
+          <th class="right">คงเหลือ</th><th>ความคืบหน้า</th><th></th>
+        </tr></thead>
+        <tbody>${approvedSorted.map(p=>{
+          const spent = Number(p.spent||0);
+          const appr  = Number(p.budget_approved||0);
+          const rem   = appr - spent;
+          const pct   = appr>0 ? Math.min(Math.round(spent/appr*100),100) : 0;
+          const barColor = pct>90?'#EF4444':pct>70?'#F59E0B':'#22C55E';
+          return `<tr style="cursor:pointer" onclick="nav('detail',{id:'${p.project_id}'})">
+            <td><div style="font-weight:600;font-size:13px">${esc(p.title)}</div></td>
+            <td style="font-size:12px;color:#7C8FA8">${esc(p.dept)}</td>
+            <td class="right" style="font-weight:700">${fmt(appr)}</td>
+            <td class="right" style="color:#F59E0B;font-weight:700">${fmt(spent)}</td>
+            <td class="right" style="color:${rem<0?'#EF4444':'#22C55E'};font-weight:700">${fmt(rem)}</td>
+            <td style="min-width:100px">
+              <div style="display:flex;align-items:center;gap:6px">
+                <div style="flex:1;height:6px;background:#EEF0F4;border-radius:99px;overflow:hidden">
+                  <div style="height:100%;width:${pct}%;background:${barColor};border-radius:99px"></div>
+                </div>
+                <span style="font-size:11px;color:#7C8FA8;white-space:nowrap">${pct}%</span>
+              </div>
+            </td>
+            <td style="color:#3B82F6;font-size:12px;font-weight:600">ดูรายละเอียด →</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`
+    : '<div style="color:#7C8FA8;font-size:13px;padding:8px 0">ยังไม่มีโครงการที่อนุมัติ</div>';
+}
+
+function scrollToList(id){
+  document.getElementById(id)?.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function drawStatusChart(byStatus, total){
+  const canvas=document.getElementById('chart-status');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  if(window._chartStatus) window._chartStatus.destroy();
+  const labels=Object.keys(byStatus).map(s=>SL[s]);
+  const values=Object.values(byStatus);
+  const colors=Object.keys(byStatus).map(s=>SC[s]);
+  window._chartStatus = new Chart(ctx,{
+    type:'doughnut',
+    data:{labels, datasets:[{data:values, backgroundColor:colors, borderWidth:2, borderColor:'#fff'}]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      cutout:'65%',
+      plugins:{
+        legend:{position:'right', labels:{font:{family:'Sarabun',size:12}, padding:12, boxWidth:12}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} โครงการ`}}
+      }
+    }
+  });
+}
+
+function drawBudgetChart(d, totalBudget){
+  const canvas=document.getElementById('chart-budget');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  if(window._chartBudget) window._chartBudget.destroy();
+  const labels=['งบที่ขอ','งบที่อนุมัติ','เบิกจ่ายแล้ว'];
+  const values=[d.totalReq, d.totalAppr, d.totalSpent];
+  const colors=['#8B5CF6','#22C55E','#F59E0B'];
+  if(totalBudget>0){ labels.push('วงเงินทั้งหมด'); values.push(totalBudget); colors.push('#3B82F6'); }
+  window._chartBudget = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{
+        label:'บาท',
+        data:values,
+        backgroundColor:colors,
+        borderRadius:8, borderSkipped:false,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} บาท`}}},
+      scales:{
+        y:{ticks:{callback:v=>v>=1e6?(v/1e6).toFixed(1)+'ล.':fmt(v), font:{family:'Sarabun',size:11}}, grid:{color:'#EEF0F4'}},
+        x:{ticks:{font:{family:'Sarabun',size:12}}, grid:{display:false}}
+      }
+    }
+  });
+}
+
+function drawDeptChart(byDept){
+  const canvas=document.getElementById('chart-dept');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  if(window._chartDept) window._chartDept.destroy();
+  const sorted=Object.entries(byDept||{}).sort((a,b)=>b[1].requested-a[1].requested).slice(0,8);
+  if(!sorted.length) return;
+  const COLORS=['#3B82F6','#8B5CF6','#22C55E','#F59E0B','#EF4444','#06B6D4','#EC4899','#14B8A6'];
+  // ชื่อย่อ dept
+  const shorten=s=>s.replace('กลุ่มสาระ','').replace('งาน','').trim().slice(0,14);
+  window._chartDept = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels: sorted.map(([k])=>shorten(k)),
+      datasets:[{
+        label:'งบที่ขอ (บาท)',
+        data: sorted.map(([,v])=>v.requested),
+        backgroundColor: sorted.map((_,i)=>COLORS[i%COLORS.length]),
+        borderRadius:6, borderSkipped:false,
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} บาท`}}},
+      scales:{
+        x:{ticks:{callback:v=>v>=1e6?fmt(v/1e6)+'ล.':fmt(v), font:{family:'Sarabun',size:10}}, grid:{color:'#EEF0F4'}},
+        y:{ticks:{font:{family:'Sarabun',size:11}}, grid:{display:false}}
+      }
+    }
+  });
 }
 
 /* ================================================================ PROJECTS */
 async function loadProjects(){
-  document.getElementById('proj-list').innerHTML='<div class="loading">กำลังโหลด...</div>';
-  const r=await apiGet('getProjects',{});
-  if(!r.ok){document.getElementById('proj-list').innerHTML=`<div class="loading" style="color:#EF4444">${r.message}</div>`;return;}
+  document.getElementById('proj-list').innerHTML=skeletonCards(4);
+  const email = ME ? ME.email : GUEST_EMAIL;
+  const ckey = 'proj_'+email;
+  let cached = cacheGet(ckey);
+  if(!cached){
+    cached = await apiRaw('getProjects',{userEmail:email});
+    if(cached.ok) cacheSet(ckey, cached);
+  }
+  const r = cached;
+  if(!r.ok){document.getElementById('proj-list').innerHTML=`<div class="empty"><div class="empty-icon">⚠️</div>${r.message}</div>`;return;}
   PROJECTS=r.projects;
   document.getElementById('proj-count').textContent=`${PROJECTS.length} โครงการ`;
   renderProjects();
 }
 
+function skeletonCards(n){
+  return Array(n).fill(0).map(()=>`<div class="proj-card" style="pointer-events:none">
+    <div class="proj-top">
+      <div style="flex:1">
+        <div class="skel skel-badge" style="width:80px;margin-bottom:8px"></div>
+        <div class="skel skel-text" style="width:70%;margin-bottom:6px"></div>
+        <div class="skel skel-text" style="width:40%"></div>
+      </div>
+      <div style="text-align:right"><div class="skel skel-text" style="width:80px"></div></div>
+    </div>
+  </div>`).join('');
+}
+
 function renderProjects(){
-  const q=document.getElementById('search').value.toLowerCase();
-  const f=PROJECTS.filter(p=>(STATUS_F==='all'||p.status===STATUS_F)&&(!q||(p.title||'').toLowerCase().includes(q)||(p.owner_name||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q)));
+  const q    = document.getElementById('search').value.toLowerCase();
+  const dept = document.getElementById('filter-dept')?.value||'';
+  const sort = document.getElementById('filter-sort')?.value||'newest';
+  let f = PROJECTS.filter(p=>
+    (STATUS_F==='all'||p.status===STATUS_F) &&
+    (!dept||p.dept===dept) &&
+    (!q||(p.title||'').toLowerCase().includes(q)||(p.owner_name||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q))
+  );
+  // sort
+  if(sort==='newest')      f.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  else if(sort==='oldest') f.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+  else if(sort==='budget-high') f.sort((a,b)=>Number(b.budget_requested)-Number(a.budget_requested));
+  else if(sort==='budget-low')  f.sort((a,b)=>Number(a.budget_requested)-Number(b.budget_requested));
+  else if(sort==='name')        f.sort((a,b)=>(a.title||'').localeCompare(b.title||'','th'));
+
+  const res = document.getElementById('filter-result');
+  if(res) res.textContent = f.length !== PROJECTS.length ? `แสดง ${f.length} / ${PROJECTS.length} รายการ` : '';
+
   const wrap=document.getElementById('proj-list');
-  if(!f.length){wrap.innerHTML='<div class="empty"><div class="empty-icon">📋</div>ไม่พบโครงการ</div>';return;}
+  if(!f.length){wrap.innerHTML='<div class="empty"><div class="empty-icon">📋</div>ไม่พบโครงการที่ตรงเงื่อนไข</div>';return;}
   wrap.innerHTML=f.map(p=>{
     const pct=p.budget_approved>0?Math.round((p.spent||0)/p.budget_approved*100):0;
     const bar=p.status==='approved'&&p.budget_approved>0?`<div class="prog-wrap"><div class="prog-info"><span>ใช้จ่าย ${fmt(p.spent||0)} บาท</span><span>${pct}%</span></div><div class="prog-bar"><div class="prog-fill" style="width:${Math.min(pct,100)}%;background:${pct>90?'#EF4444':'#22C55E'}"></div></div></div>`:'';
@@ -846,9 +1234,9 @@ function printPreview(){
 function closePrint(){}
 
 async function printFromDetail(pid){
-  const r=await apiGet('getProject',{id:pid});
+  const email = ME ? ME.email : GUEST_EMAIL;
+  const r = await apiRaw('getProject',{id:pid, userEmail:email});
   if(!r.ok){ toast('ไม่สามารถโหลดข้อมูลโครงการได้','error'); return; }
-  // ส่งข้อมูลโปรเจกต์โดยตรง ไม่ต้องพึ่ง DOM
   const html=buildDocHTML(r.project);
   const w=window.open('','_blank','width=960,height=750,scrollbars=yes');
   if(!w){ toast('กรุณาอนุญาต popup แล้วลองใหม่','error'); return; }
@@ -861,16 +1249,27 @@ async function loadDetail(projectId){
   const wrap=document.getElementById('det-body');
   wrap.innerHTML='<div class="loading">กำลังโหลด...</div>';
   document.getElementById('det-actions').innerHTML='';
-  const [pr,ex]=await Promise.all([apiGet('getProject',{id:projectId}),apiGet('getExpenses',{projectId})]);
+  const email = ME ? ME.email : GUEST_EMAIL;
+  const [pr, ex, er] = await Promise.all([
+    apiRaw('getProject',        {id:projectId, userEmail:email}),
+    apiRaw('getExpenses',       {projectId, userEmail:email}),
+    ME ? apiRaw('getExpenseRequests', {projectId, userEmail:email}) : Promise.resolve({ok:false})
+  ]);
   if(!pr.ok){wrap.innerHTML=`<div style="color:#EF4444;padding:24px">${pr.message}</div>`;return;}
-  const p=pr.project, expenses=ex.ok?ex.expenses:[];
-  const spent=expenses.reduce((s,e)=>s+Number(e.amount||0),0);
-  const remaining=Number(p.budget_approved||0)-spent;
-  const pct=p.budget_approved>0?Math.round(spent/p.budget_approved*100):0;
-  const canAppr=ME.role==='admin'||ME.role==='finance';
-  const canExp=ME.role!=='finance'&&p.status==='approved';
-  const canAct=canAppr&&p.status!=='approved'&&p.status!=='rejected';
-  const canEdit=ME.email===p.owner_email&&p.status==='pending';
+  const p        = pr.project;
+  const expenses = ex.ok ? ex.expenses : [];
+  const requests = er.ok ? er.requests : [];
+  const pendingReqs = requests.filter(r=>r.status==='pending');
+
+  const spent     = expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  const remaining = Number(p.budget_approved||0)-spent;
+  const pct       = p.budget_approved>0 ? Math.round(spent/p.budget_approved*100) : 0;
+
+  const canAppr = ME && (ME.role==='admin'||ME.role==='finance');
+  const canAct  = canAppr && p.status!=='approved' && p.status!=='rejected';
+  const canEdit = ME && ME.email===p.owner_email && p.status==='pending';
+  // ครูยื่นคำขอได้เมื่อโครงการอนุมัติแล้ว
+  const canRequest = ME && ME.role==='teacher' && p.status==='approved';
 
   document.getElementById('det-title').textContent=p.title;
   const acts=[];
@@ -883,6 +1282,8 @@ async function loadDetail(projectId){
   try{sItems=JSON.parse(p.steps||'[]');}catch(_){}
   try{eItems=JSON.parse(p.eval_items||'[]');}catch(_){}
 
+  const expBadge = expenses.length + (pendingReqs.length ? ` <span class="req-badge">${pendingReqs.length} รอ</span>` : '');
+
   wrap.innerHTML=`
     <div class="det-header-meta">
       <span class="badge badge-${p.status}">${SL[p.status]}</span>
@@ -892,15 +1293,21 @@ async function loadDetail(projectId){
       <div class="mini-kpi"><div class="mini-kpi-l">งบที่ขอ</div><div class="mini-kpi-v" style="color:#8B5CF6">${fmt(p.budget_requested)}</div><div class="mini-kpi-u">บาท</div></div>
       <div class="mini-kpi"><div class="mini-kpi-l">งบที่อนุมัติ</div><div class="mini-kpi-v" style="color:#22C55E">${p.budget_approved?fmt(p.budget_approved):'-'}</div><div class="mini-kpi-u">${p.budget_approved?'บาท':''}</div></div>
       <div class="mini-kpi"><div class="mini-kpi-l">เบิกจ่ายแล้ว</div><div class="mini-kpi-v" style="color:#F59E0B">${fmt(spent)}</div><div class="mini-kpi-u">บาท</div></div>
+      <div class="mini-kpi"><div class="mini-kpi-l">คงเหลือ</div><div class="mini-kpi-v" style="color:${remaining<0?'#EF4444':'#3B82F6'}">${p.budget_approved?fmt(remaining):'-'}</div><div class="mini-kpi-u">${p.budget_approved?'บาท':''}</div></div>
     </div>
-    ${p.status==='approved'&&p.budget_approved>0?`<div class="card" style="margin-bottom:14px;padding:14px 18px"><div style="display:flex;justify-content:space-between;font-size:12px;color:#7C8FA8;margin-bottom:6px"><span>การใช้งบประมาณ ${pct}%</span><span>คงเหลือ ${fmt(remaining)} บาท</span></div><div class="prog-bar"><div class="prog-fill" style="width:${Math.min(pct,100)}%;background:${pct>90?'#EF4444':'#22C55E'}"></div></div></div>`:''}
+    ${p.status==='approved'&&p.budget_approved>0?`<div class="card" style="margin-bottom:14px;padding:14px 18px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#7C8FA8;margin-bottom:6px">
+        <span>การใช้งบประมาณ ${pct}%</span><span>คงเหลือ ${fmt(remaining)} บาท</span>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${Math.min(pct,100)}%;background:${pct>90?'#EF4444':pct>70?'#F59E0B':'#22C55E'}"></div></div>
+    </div>`:''}
 
     <div class="det-tabs">
       <button class="det-tab active" onclick="detTab('info',this)">ข้อมูล</button>
       <button class="det-tab" onclick="detTab('budget',this)">งบประมาณ</button>
       <button class="det-tab" onclick="detTab('steps',this)">ขั้นตอน</button>
       <button class="det-tab" onclick="detTab('eval',this)">ประเมินผล</button>
-      <button class="det-tab" onclick="detTab('expenses',this)">เบิกจ่าย (${expenses.length})</button>
+      <button class="det-tab" onclick="detTab('expenses',this)">เบิกจ่าย (${expBadge})</button>
     </div>
 
     <div id="dt-info" class="card">
@@ -924,6 +1331,7 @@ async function loadDetail(projectId){
         <button class="btn-approve" onclick="doAppr('approved','${p.project_id}',${p.budget_requested})">✓ อนุมัติ</button>
         <button class="btn-reject" onclick="doAppr('rejected','${p.project_id}',0)">✕ ไม่อนุมัติ</button>
       </div></div></div>`:''}
+      ${!ME?`<div style="margin-top:14px;padding:10px 14px;background:#EFF6FF;border-radius:8px;font-size:12px;color:#3B82F6">🔑 <a href="javascript:openLogin()" style="color:#3B82F6;font-weight:700">เข้าสู่ระบบ</a> เพื่อดำเนินการเพิ่มเติม</div>`:''}
     </div>
 
     <div id="dt-budget" class="hidden">
@@ -950,24 +1358,167 @@ async function loadDetail(projectId){
     </div>
 
     <div id="dt-expenses" class="hidden">
-      ${canExp?`<button class="exp-add-btn" onclick="toggleExpForm()">+ บันทึกการเบิกจ่าย</button>`:''}
-      <div id="exp-form" class="card hidden" style="margin-bottom:12px">
-        <div class="card-title mb-14">บันทึกการเบิกจ่าย</div>
-        <div class="fields-2" style="margin-bottom:10px">
-          <div class="field"><label>รายการ</label><input id="ei-item" placeholder="เช่น ค่าวัสดุ"></div>
-          <div class="field"><label>จำนวนเงิน (บาท)</label><input id="ei-amt" type="number"></div>
-          <div class="field"><label>วันที่</label><input id="ei-date" type="date"></div>
-          <div class="field"><label>หมายเหตุ</label><input id="ei-note"></div>
-        </div>
-        <div class="flex-end">
-          <button class="btn-sec" onclick="toggleExpForm()">ยกเลิก</button>
-          <button class="btn-prim" id="btn-exp" onclick="saveExp('${p.project_id}')">บันทึก</button>
-        </div>
-      </div>
-      ${renderExpTable(expenses,canAppr)}
+      ${renderExpenseTab(p, expenses, requests, canRequest, canAppr)}
     </div>`;
 }
 
+function renderExpenseTab(p, expenses, requests, canRequest, canAppr){
+  const REQ_SL  = {pending:'รอพิจารณา', approved:'อนุมัติแล้ว', rejected:'ปฏิเสธ'};
+  const REQ_SC  = {pending:'#F59E0B',   approved:'#22C55E',      rejected:'#EF4444'};
+  const pendingReqs = requests.filter(r=>r.status==='pending');
+  const myReqs      = requests.filter(r=>r.status!=='pending'); // ประวัติที่ดำเนินการแล้ว
+
+  let html = '';
+
+  // ---- ครู: ฟอร์มยื่นคำขอ ----
+  if(canRequest){
+    html += `
+    <div class="exp-request-box" id="exp-req-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="card-title">ยื่นคำขอเบิกจ่าย</div>
+        <button class="exp-add-btn" onclick="toggleReqForm()" id="btn-toggle-req">+ ยื่นคำขอใหม่</button>
+      </div>
+      <div id="req-form" class="hidden">
+        <div class="fields-2" style="margin-bottom:10px">
+          <div class="field"><label>รายการที่ขอเบิก <span class="req">*</span></label><input id="ri-item" placeholder="เช่น ค่าวัสดุ, ค่าพาหนะ"></div>
+          <div class="field"><label>จำนวนเงิน (บาท) <span class="req">*</span></label><input id="ri-amt" type="number" min="0"></div>
+          <div class="field"><label>วันที่ดำเนินการ</label><input id="ri-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+          <div class="field"><label>หมายเหตุ / เอกสารแนบ</label><input id="ri-note" placeholder="ระบุเอกสารหลักฐาน"></div>
+        </div>
+        <div class="flex-end">
+          <button class="btn-sec" onclick="toggleReqForm()">ยกเลิก</button>
+          <button class="btn-prim" id="btn-req-submit" onclick="submitExpenseRequest('${p.project_id}')">📤 ส่งคำขอ</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ---- ฝ่ายงบ: รายการรอพิจารณา ----
+  if(canAppr && pendingReqs.length){
+    html += `
+    <div class="exp-pending-box">
+      <div class="exp-pending-title">🔔 คำขอรอพิจารณา (${pendingReqs.length} รายการ)</div>
+      ${pendingReqs.map(r=>`
+      <div class="exp-req-card pending">
+        <div class="exp-req-top">
+          <div>
+            <div class="exp-req-name">${esc(r.item)}</div>
+            <div class="exp-req-meta">โดย ${esc(r.requested_name||r.requested_by)} · ${fdate(r.created_at)}</div>
+            ${r.note?`<div class="exp-req-note">${esc(r.note)}</div>`:''}
+          </div>
+          <div class="exp-req-amt">${fmt(r.amount)}<span>บาท</span></div>
+        </div>
+        <div class="exp-req-actions">
+          <button class="btn-approve" onclick="handleExpReq('approve','${r.request_id}','${p.project_id}')">✓ อนุมัติ</button>
+          <button class="btn-reject" onclick="handleExpReq('reject','${r.request_id}','${p.project_id}')">✕ ปฏิเสธ</button>
+        </div>
+        <div id="reject-form-${r.request_id}" class="hidden" style="margin-top:8px">
+          <input id="reject-note-${r.request_id}" class="search" style="width:100%;margin-bottom:6px" placeholder="ระบุเหตุผลการปฏิเสธ">
+          <div class="flex-end" style="gap:6px">
+            <button class="btn-sec" onclick="document.getElementById('reject-form-${r.request_id}').classList.add('hidden')">ยกเลิก</button>
+            <button class="btn-reject" onclick="confirmReject('${r.request_id}','${p.project_id}')">ยืนยันปฏิเสธ</button>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  // ---- คำขอที่ดำเนินการแล้ว (ทุกคนเห็น) ----
+  const doneReqs = requests.filter(r=>r.status!=='pending');
+  if(doneReqs.length){
+    html += `
+    <div style="margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#7C8FA8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">ประวัติคำขอเบิก</div>
+      ${doneReqs.map(r=>`
+      <div class="exp-req-card ${r.status}">
+        <div class="exp-req-top">
+          <div>
+            <div class="exp-req-name">${esc(r.item)}</div>
+            <div class="exp-req-meta">โดย ${esc(r.requested_name||r.requested_by)} · ${fdate(r.created_at)}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="badge badge-${r.status==='approved'?'approved':'rejected'}">${REQ_SL[r.status]||r.status}</span>
+            <div class="exp-req-amt">${fmt(r.amount)}<span>บาท</span></div>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  // ---- รายการเบิกจ่ายจริง (อนุมัติแล้ว) ----
+  html += `
+  <div>
+    <div style="font-size:12px;font-weight:700;color:#7C8FA8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">รายการเบิกจ่ายที่บันทึกแล้ว</div>
+    ${renderExpTable(expenses, canAppr)}
+  </div>`;
+
+  return html;
+}
+
+function toggleReqForm(){
+  const f = document.getElementById('req-form');
+  f.classList.toggle('hidden');
+  document.getElementById('btn-toggle-req').textContent = f.classList.contains('hidden') ? '+ ยื่นคำขอใหม่' : '✕ ยกเลิก';
+}
+
+async function submitExpenseRequest(pid){
+  const item = document.getElementById('ri-item').value.trim();
+  const amt  = document.getElementById('ri-amt').value;
+  if(!item||!amt){toast('กรุณากรอกรายการและจำนวนเงิน','error');return;}
+  const btn=document.getElementById('btn-req-submit');
+  btn.disabled=true; btn.textContent='กำลังส่ง...';
+  const r = await apiPost('requestExpense',{
+    project_id:pid, item, amount:Number(amt),
+    date:document.getElementById('ri-date').value,
+    note:document.getElementById('ri-note').value
+  });
+  btn.disabled=false; btn.textContent='📤 ส่งคำขอ';
+  if(r.ok){ toast('ส่งคำขอแล้ว รอฝ่ายงบอนุมัติ ✓'); loadDetail(pid); }
+  else toast(r.message||'เกิดข้อผิดพลาด','error');
+}
+
+function handleExpReq(action, reqId, pid){
+  if(action==='approve'){
+    if(!confirm('ยืนยันอนุมัติรายการนี้?')) return;
+    apiPost('approveExpense',{requestId:reqId}).then(r=>{
+      if(r.ok){toast('อนุมัติและบันทึกแล้ว ✓');loadDetail(pid);}
+      else toast(r.message||'error','error');
+    });
+  } else {
+    document.getElementById(`reject-form-${reqId}`).classList.remove('hidden');
+  }
+}
+
+async function confirmReject(reqId, pid){
+  const note = document.getElementById(`reject-note-${reqId}`).value.trim();
+  if(!note){toast('กรุณาระบุเหตุผล','error');return;}
+  const r = await apiPost('rejectExpense',{requestId:reqId, note});
+  if(r.ok){toast('ปฏิเสธคำขอแล้ว');loadDetail(pid);}
+  else toast(r.message||'error','error');
+}
+
+function renderExpTable(expenses,canDel){
+  if(!expenses.length) return '<div class="empty" style="padding:24px 0">ยังไม่มีรายการ</div>';
+  const total=expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  return `<table class="data-table">
+    <thead><tr><th>รายการ</th><th>จำนวน (บาท)</th><th>วันที่</th><th>บันทึกโดย</th><th>หมายเหตุ</th>${canDel?'<th></th>':''}</tr></thead>
+    <tbody>
+      ${expenses.map(e=>`<tr>
+        <td>${esc(e.item||'')}</td>
+        <td style="font-weight:700">${fmt(e.amount)}</td>
+        <td>${fdate(e.date)}</td>
+        <td>${esc(e.added_by||'')}</td>
+        <td style="color:#7C8FA8">${esc(e.note||'-')}</td>
+        ${canDel?`<td><button class="edit-btn" style="color:#EF4444" onclick="delExp('${e.expense_id}','${e.project_id}')">ลบ</button></td>`:''}
+      </tr>`).join('')}
+      <tr class="total-row"><td>รวม</td><td style="font-weight:800">${fmt(total)}</td><td colspan="${canDel?4:3}"></td></tr>
+    </tbody></table>`;
+}
+async function delExp(eid,pid){
+  if(!confirm('ยืนยันลบ?')) return;
+  const r=await apiPost('deleteExpense',{expenseId:eid});
+  if(r.ok){toast('ลบแล้ว');loadDetail(pid);}else toast(r.message||'error','error');
+}
 function infoBlock(label,value,color=''){
   return `<div class="info-block"><div class="info-lbl">${label}</div><div class="info-val" ${color?`style="color:${color}"`:''}>${esc(value||'-')}</div></div>`;
 }
@@ -989,16 +1540,6 @@ function renderExpTable(expenses,canDel){
       <tr class="total-row"><td>รวม</td><td style="font-weight:800">${fmt(total)}</td><td colspan="${canDel?4:3}"></td></tr>
     </tbody></table>`;
 }
-function toggleExpForm(){ document.getElementById('exp-form')?.classList.toggle('hidden'); }
-async function saveExp(pid){
-  const item=document.getElementById('ei-item').value.trim(),amt=document.getElementById('ei-amt').value;
-  if(!item||!amt){toast('กรุณากรอกรายการและจำนวนเงิน','error');return;}
-  const btn=document.getElementById('btn-exp');btn.disabled=true;btn.textContent='กำลังบันทึก...';
-  const r=await apiPost('addExpense',{project_id:pid,item,amount:Number(amt),date:document.getElementById('ei-date').value,note:document.getElementById('ei-note').value});
-  if(r.ok){toast('บันทึกแล้ว');loadDetail(pid);}
-  else{toast(r.message||'error','error');btn.disabled=false;btn.textContent='บันทึก';}
-}
-async function delExp(eid,pid){ if(!confirm('ยืนยันลบ?')) return; const r=await apiPost('deleteExpense',{expenseId:eid}); if(r.ok){toast('ลบแล้ว');loadDetail(pid);}else toast(r.message||'error','error'); }
 
 function doAppr(status,pid,budReq){
   const lb={reviewing:'🔍 ตรวจสอบ',approved:'✅ อนุมัติ',rejected:'❌ ไม่อนุมัติ'};
@@ -1021,6 +1562,7 @@ async function editProj(pid){ const r=await apiGet('getProject',{id:pid}); if(r.
 
 /* ================================================================ USERS */
 async function loadUsers(){
+  if(!ME){document.getElementById('users-table').innerHTML=`<div style="color:#EF4444;padding:16px">กรุณาเข้าสู่ระบบก่อน</div>`;return;}
   const r=await apiGet('getUsers',{});
   if(!r.ok){document.getElementById('users-table').innerHTML=`<div style="color:#EF4444;padding:16px">${r.message}</div>`;return;}
   document.getElementById('users-count').textContent=`${r.users.length} บัญชี`;
@@ -1044,17 +1586,99 @@ function promptEditUser(uJson){
   apiPost('saveUser',{...u,role:newRole}).then(r=>{ if(r.ok){toast('บันทึกแล้ว');loadUsers();}else toast(r.message||'error','error'); });
 }
 
+/* ================================================================ EXPORT CSV */
+function exportCSV(){
+  if(!PROJECTS.length){ toast('ไม่มีข้อมูล','error'); return; }
+  const headers=['รหัส','ชื่อโครงการ','หน่วยงาน','ผู้รับผิดชอบ','งบที่ขอ','งบที่อนุมัติ','เบิกจ่าย','สถานะ','วันที่สร้าง'];
+  const rows = PROJECTS.map(p=>[
+    p.project_id, p.title, p.dept, p.owner_name,
+    p.budget_requested, p.budget_approved||0, p.spent||0,
+    SL[p.status]||p.status, p.created_at?p.created_at.slice(0,10):''
+  ]);
+  const BOM = '\uFEFF'; // UTF-8 BOM for Excel Thai
+  const csv = BOM + [headers,...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=`โครงการ_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('Export สำเร็จ ✓');
+}
+
+/* ================================================================ LOG */
+async function loadLog(){
+  if(!ME||ME.role!=='admin'){ document.getElementById('log-body').innerHTML=`<div style="color:#EF4444;padding:16px">ไม่มีสิทธิ์เข้าถึง</div>`; return; }
+  document.getElementById('log-body').innerHTML='<div class="loading">กำลังโหลด...</div>';
+  const r = await apiGet('getLog',{});
+  if(!r.ok){ document.getElementById('log-body').innerHTML=`<div style="color:#EF4444;padding:16px">${r.message}</div>`; return; }
+  const logs = r.logs||[];
+  document.getElementById('log-count').textContent = `${logs.length} รายการ`;
+  const ACTION_ICON={create:'➕',edit:'✏️',pending:'⏳',reviewing:'🔍',approved:'✅',rejected:'❌',delete:'🗑️'};
+  document.getElementById('log-body').innerHTML = logs.length
+    ? `<div class="log-list">${logs.slice().reverse().map(l=>`
+        <div class="log-item">
+          <div class="log-icon">${ACTION_ICON[l.action]||'📝'}</div>
+          <div class="log-content">
+            <div class="log-title">${esc(l.actor||'')} <span class="log-action ${l.action}">${esc(l.action||'')}</span></div>
+            <div class="log-proj">${esc(l.project_id||'')}${l.note?` · ${esc(l.note)}`:''}</div>
+            <div class="log-time">${fdate(l.ts)}</div>
+          </div>
+        </div>`).join('')}</div>`
+    : '<div class="empty"><div class="empty-icon">📋</div>ยังไม่มีประวัติ</div>';
+}
+
+/* ================================================================ BUDGET CONFIG */
+async function loadBudgetConfig(){
+  if(!ME||!(ME.role==='finance'||ME.role==='admin')){
+    document.getElementById('page-budget-config').innerHTML=`<div style="padding:32px;color:#EF4444">ไม่มีสิทธิ์เข้าถึง</div>`;
+    return;
+  }
+  document.getElementById('cfg-year').textContent = new Date().getFullYear()+543;
+  const r = await apiGet('getBudgetConfig',{});
+  const cur = document.getElementById('cfg-current');
+  if(r.ok && Number(r.config.total_budget||0)>0){
+    const tb = Number(r.config.total_budget);
+    cur.innerHTML=`<div class="cfg-current-box">
+      <div class="cfg-cur-label">วงเงินที่กำหนดปัจจุบัน</div>
+      <div class="cfg-cur-val">${fmt(tb)} <span style="font-size:14px;font-weight:400">บาท</span></div>
+      <div class="cfg-cur-note">อัปเดตล่าสุด: ${r.config.updated_at ? fdate(r.config.updated_at) : '-'} โดย ${esc(r.config.updated_by||'-')}</div>
+    </div>`;
+    document.getElementById('cfg-budget').value = tb;
+  } else {
+    cur.innerHTML=`<div style="font-size:13px;color:#7C8FA8;padding:8px 0">ยังไม่ได้กำหนดวงเงิน</div>`;
+  }
+}
+
+async function saveBudgetConfig(){
+  const val = Number(document.getElementById('cfg-budget').value);
+  const errEl = document.getElementById('cfg-err');
+  if(!val||val<=0){ errEl.textContent='กรุณากรอกวงเงินที่ถูกต้อง'; errEl.classList.remove('hidden'); return; }
+  errEl.classList.add('hidden');
+  const btn = document.getElementById('btn-cfg-save');
+  btn.disabled=true; btn.textContent='กำลังบันทึก...';
+  const r = await apiPost('saveBudgetConfig',{total_budget:val});
+  btn.disabled=false; btn.textContent='💾 บันทึกวงเงิน';
+  if(r.ok){ toast('บันทึกวงเงินแล้ว ✓'); loadBudgetConfig(); }
+  else toast(r.message||'เกิดข้อผิดพลาด','error');
+}
+
 /* ================================================================ API */
-async function apiGet(action,params){
-  const qs=new URLSearchParams({action,userEmail:USER_EMAIL,...params});
+async function apiRaw(action, params){
+  const qs=new URLSearchParams({action,...params});
   try{ return await (await fetch(`${API_URL}?${qs}`)).json(); }
   catch(e){ return {ok:false,message:e.message}; }
+}
+async function apiGet(action,params){
+  return apiRaw(action,{userEmail:USER_EMAIL,...params});
 }
 async function apiPost(action,body){
   const payload=JSON.stringify({action,userEmail:USER_EMAIL,...body});
   try{
     const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'_json='+encodeURIComponent(payload)});
-    return await res.json();
+    const data = await res.json();
+    // clear cache after any mutation
+    if(data.ok) cacheClear();
+    return data;
   }catch(e){ return {ok:false,message:e.message}; }
 }
 
