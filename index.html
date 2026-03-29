@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ระบบบริหารโครงการ — โรงเรียนบ้านคลอง 14</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Prompt:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-badge">ร.ร.</div>
+      <div>
+        <div class="sb-school">โรงเรียนบ้านคลอง 14</div>
+        <div class="sb-sub">สพป.นครนายก · ระบบงบประมาณ</div>
+      </div>
+    </div>
+    <div class="sb-user">
+      <div class="sb-avatar" id="sb-avatar">?</div>
+      <div class="sb-user-info">
+        <div class="sb-user-name" id="sb-name">กำลังโหลด...</div>
+        <div class="sb-user-role" id="sb-role"></div>
+      </div>
+    </div>
+    <nav id="nav">
+      <a class="nav-item" data-page="dashboard"><svg viewBox="0 0 20 20"><path d="M2 11h7V2H2v9zm0 7h7v-5H2v5zm9 0h7v-9h-7v9zm0-16v5h7V2h-7z"/></svg>ภาพรวม</a>
+      <a class="nav-item" data-page="projects"><svg viewBox="0 0 20 20"><path d="M4 4h12v2H4V4zm0 4h12v2H4V8zm0 4h8v2H4v-2z"/></svg>โครงการทั้งหมด</a>
+      <a class="nav-item teacher-only hidden" data-page="form"><svg viewBox="0 0 20 20"><path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4z"/></svg>เสนอโครงการ</a>
+      <a class="nav-item admin-only hidden" data-page="users"><svg viewBox="0 0 20 20"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zm8 0a3 3 0 11-6 0 3 3 0 016 0zM3 17a5 5 0 0110 0H3zm10-1a5 5 0 0110 0h-4a5 5 0 00-6 0z"/></svg>จัดการผู้ใช้</a>
+    </nav>
+    <div class="sb-year">ปีงบประมาณ <span id="bud-year"></span></div>
+  </aside>
+  <main id="main">
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page">
+      <div class="page-top"><h1 id="greet">ภาพรวม</h1><p class="page-desc">สรุปโครงการและงบประมาณประจำปี</p></div>
+      <div class="kpi-row">
+        <div class="kpi" id="kpi-count"><div class="kpi-n">—</div><div class="kpi-l">โครงการทั้งหมด</div></div>
+        <div class="kpi" id="kpi-req"><div class="kpi-n">—</div><div class="kpi-l">งบที่ขอ (บาท)</div></div>
+        <div class="kpi" id="kpi-appr"><div class="kpi-n">—</div><div class="kpi-l">งบที่อนุมัติ (บาท)</div></div>
+        <div class="kpi" id="kpi-spent"><div class="kpi-n">—</div><div class="kpi-l">เบิกจ่ายแล้ว (บาท)</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card"><div class="card-title">สถานะโครงการ</div><div id="dash-status" class="mt-16"></div><button class="link-btn mt-12" onclick="nav('projects')">ดูทั้งหมด →</button></div>
+        <div class="card"><div class="card-title">งบประมาณตามหน่วยงาน</div><div id="dash-dept" class="mt-16"></div></div>
+      </div>
+    </div>
+    <!-- PROJECTS -->
+    <div id="page-projects" class="page hidden">
+      <div class="page-top flex-sb">
+        <div><h1>โครงการทั้งหมด</h1><p class="page-desc" id="proj-count">— รายการ</p></div>
+        <button class="btn-prim teacher-only hidden" onclick="nav('form')">+ เสนอโครงการใหม่</button>
+      </div>
+      <div class="toolbar">
+        <div class="tab-group" id="status-tabs">
+          <button class="tab active" data-s="all">ทั้งหมด</button>
+          <button class="tab" data-s="pending">รอตรวจสอบ</button>
+          <button class="tab" data-s="reviewing">กำลังตรวจสอบ</button>
+          <button class="tab" data-s="approved">อนุมัติแล้ว</button>
+          <button class="tab" data-s="rejected">ไม่อนุมัติ</button>
+        </div>
+        <input id="search" class="search" placeholder="ค้นหา...">
+      </div>
+      <div id="proj-list"></div>
+    </div>
+    <!-- FORM -->
+    <div id="page-form" class="page hidden">
+      <div class="page-top flex-sb">
+        <div>
+          <button class="back-btn" onclick="nav('projects')">← กลับ</button>
+          <h1 id="form-title">เสนอโครงการใหม่</h1>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-sec" onclick="printPreview()">🖨 พิมพ์ PDF</button>
+          <button class="btn-prim" id="btn-save" onclick="saveProject()">💾 บันทึก</button>
+        </div>
+      </div>
+      <div class="form-wrap">
+        <input type="hidden" id="f-id">
+        <!-- ข้อมูลโครงการ -->
+        <div class="form-section">
+          <div class="form-section-head">ข้อมูลโครงการ</div>
+          <div class="field"><label>ชื่อโครงการ <span class="req">*</span></label><input id="f-title" placeholder="ชื่อโครงการ/กิจกรรม"></div>
+          <div class="fields-2 mt-12">
+            <div class="field">
+              <label>ลักษณะโครงการ</label>
+              <div class="cb-group cb-grid2">
+                <label class="cb-item"><input type="checkbox" name="proj_type" value="โครงการใหม่"> โครงการใหม่</label>
+                <label class="cb-item"><input type="checkbox" name="proj_type" value="โครงการต่อเนื่อง"> โครงการต่อเนื่อง</label>
+                <label class="cb-item"><input type="checkbox" name="proj_type" value="งานประจำ"> งานประจำ</label>
+                <label class="cb-item"><input type="checkbox" name="proj_type" value="งานพัฒนา"> งานพัฒนา</label>
+              </div>
+            </div>
+            <div class="field">
+              <label>กลุ่มที่รับผิดชอบ <span class="req">*</span></label>
+              <select id="f-dept">
+                <option value="">— เลือก —</option>
+                <option>กลุ่มสาระภาษาไทย</option>
+                <option>กลุ่มสาระคณิตศาสตร์</option>
+                <option>กลุ่มสาระวิทยาศาสตร์และเทคโนโลยี</option>
+                <option>กลุ่มสาระสังคมศึกษา</option>
+                <option>กลุ่มสาระภาษาต่างประเทศ</option>
+                <option>กลุ่มสาระศิลปะ</option>
+                <option>กลุ่มสาระสุขศึกษาและพลศึกษา</option>
+                <option>กลุ่มสาระการงานอาชีพ</option>
+                <option>งานวิชาการ</option>
+                <option>งานบุคลากร</option>
+                <option>งานแผนงานและงบประมาณ</option>
+                <option>งานบริหารทั่วไป</option>
+                <option>งานกิจการนักเรียน</option>
+              </select>
+            </div>
+          </div>
+          <div class="fields-3 mt-12">
+            <div class="field"><label>วันที่เริ่ม</label><input id="f-start" type="date"></div>
+            <div class="field"><label>วันที่สิ้นสุด</label><input id="f-end" type="date"></div>
+            <div class="field"><label>สถานที่ดำเนินการ</label><input id="f-place" placeholder="โรงเรียนบ้านคลอง 14"></div>
+          </div>
+        </div>
+        <!-- ยุทธศาสตร์ชาติ -->
+        <div class="form-section">
+          <div class="form-section-head">ยุทธศาสตร์ชาติ 20 ปี <span class="hint">(เลือก 1 ข้อที่สอดคล้องมากที่สุด)</span></div>
+          <div class="cb-group cb-col">
+            <label class="cb-item"><input type="radio" name="strategy" value="ยุทธศาสตร์ที่ 1 ด้านความมั่นคง"> ยุทธศาสตร์ที่ 1 ด้านความมั่นคง</label>
+            <label class="cb-item"><input type="radio" name="strategy" value="ยุทธศาสตร์ที่ 2 ด้านการสร้างความสามารถในการแข่งขัน"> ยุทธศาสตร์ที่ 2 ด้านการสร้างความสามารถในการแข่งขัน</label>
+            <label class="cb-item"><input type="radio" name="strategy" value="ยุทธศาสตร์ที่ 3 ด้านการพัฒนาและเสริมสร้างศักยภาพทรัพยากรมนุษย์"> ยุทธศาสตร์ที่ 3 ด้านการพัฒนาและเสริมสร้างศักยภาพทรัพยากรมนุษย์</label>
+            <label class="cb-item"><input type="radio" name="strategy" value="ยุทธศาสตร์ที่ 4 ด้านการสร้างโอกาส ความเสมอภาคและเท่าเทียมกันทางสังคม"> ยุทธศาสตร์ที่ 4 ด้านการสร้างโอกาส ความเสมอภาคและเท่าเทียมกันทางสังคม</label>
+            <label class="cb-item"><input type="radio" name="strategy" value="ยุทธศาสตร์ที่ 5 ด้านการสร้างการเติบโตบนคุณภาพชีวิตที่เป็นมิตรกับสิ่งแวดล้อม"> ยุทธศาสตร์ที่ 5 ด้านการสร้างการเติบโตบนคุณภาพชีวิตที่เป็นมิตรกับสิ่งแวดล้อม</label>
+            <label class="cb-item"><input type="radio" name="strategy" value="ยุทธศาสตร์ที่ 6 ด้านการปรับสมดุลและพัฒนาระบบการบริหารจัดการภาครัฐ"> ยุทธศาสตร์ที่ 6 ด้านการปรับสมดุลและพัฒนาระบบการบริหารจัดการภาครัฐ</label>
+          </div>
+        </div>
+        <!-- นโยบาย สพฐ. -->
+        <div class="form-section">
+          <div class="form-section-head">นโยบายสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน <span class="hint">(เลือก 1 ข้อที่สอดคล้องมากที่สุด)</span></div>
+          <div class="cb-group cb-col">
+            <label class="cb-item"><input type="radio" name="policy" value="นโยบายที่ 1 ปลูกฝังความรักในสถาบันหลักของชาติ และน้อมนำพระบรมราโชบายด้านการศึกษาสู่การปฏิบัติ"> นโยบายที่ 1  ปลูกฝังความรักในสถาบันหลักของชาติ และน้อมนำพระบรมราโชบายด้านการศึกษาสู่การปฏิบัติ</label>
+            <label class="cb-item"><input type="radio" name="policy" value="นโยบายที่ 2 จัดการเรียนรู้ประวัติศาสตร์ หน้าที่พลเมือง ศีลธรรม และประชาธิปไตย"> นโยบายที่ 2  จัดการเรียนรู้ประวัติศาสตร์ หน้าที่พลเมือง ศีลธรรม และประชาธิปไตย</label>
+            <label class="cb-item"><input type="radio" name="policy" value="นโยบายที่ 3 ปรับกระบวนการจัดการเรียนรู้ด้วยเทคโนโลยีที่ทันสมัย"> นโยบายที่ 3  ปรับกระบวนการจัดการเรียนรู้ด้วยเทคโนโลยีที่ทันสมัย</label>
+            <label class="cb-item"><input type="radio" name="policy" value="นโยบายที่ 4 ส่งเสริมการอ่าน เพื่อเปิดวิถีในการค้นหาความรู้และต่อยอดองค์ความรู้สูงขึ้น"> นโยบายที่ 4  ส่งเสริมการอ่าน เพื่อเปิดวิถีในการค้นหาความรู้และต่อยอดองค์ความรู้สูงขึ้น</label>
+            <label class="cb-item"><input type="radio" name="policy" value="นโยบายที่ 5 ส่งเสริม สนับสนุนกิจกรรมพัฒนาผู้เรียน"> นโยบายที่ 5  ส่งเสริม สนับสนุนกิจกรรมพัฒนาผู้เรียน</label>
+            <label class="cb-item"><input type="radio" name="policy" value="นโยบายที่ 6 จัดการศึกษาแบบเรียนรวมสำหรับเด็กที่มีความต้องการจำเป็นพิเศษ"> นโยบายที่ 6  จัดการศึกษาแบบเรียนรวมสำหรับเด็กที่มีความต้องการจำเป็นพิเศษ</label>
+            <label class="cb-item"><input type="radio" name="policy" value="นโยบายที่ 7 จัดการศึกษาเพื่อความเป็นเลิศสำหรับผู้มีความสามารถพิเศษ"> นโยบายที่ 7  จัดการศึกษาเพื่อความเป็นเลิศสำหรับผู้มีความสามารถพิเศษ</label>
+            <label class="cb-item"><input type="radio" name="policy" value="นโยบายที่ 8 เสริมสร้างความปลอดภัยของสถานศึกษา"> นโยบายที่ 8  เสริมสร้างความปลอดภัยของสถานศึกษา</label>
+            <label class="cb-item"><input type="radio" name="policy" value="นโยบายที่ 9 เพิ่มโอกาสและสร้างความเสมอภาคทางการศึกษา"> นโยบายที่ 9  เพิ่มโอกาสและสร้างความเสมอภาคทางการศึกษา</label>
+            <label class="cb-item"><input type="radio" name="policy" value="นโยบายที่ 10 พัฒนาครูและบุคลากรทางการศึกษา"> นโยบายที่ 10 พัฒนาครูและบุคลากรทางการศึกษา</label>
+            <label class="cb-item"><input type="radio" name="policy" value="นโยบายที่ 11 ลดภาระครูและบุคลากรทางการศึกษา"> นโยบายที่ 11 ลดภาระครูและบุคลากรทางการศึกษา</label>
+            <label class="cb-item"><input type="radio" name="policy" value="นโยบายที่ 12 ลดภาระนักเรียนและผู้ปกครอง"> นโยบายที่ 12 ลดภาระนักเรียนและผู้ปกครอง</label>
+            <label class="cb-item"><input type="radio" name="policy" value="นโยบายที่ 13 พัฒนาระบบบริหารจัดการให้มีประสิทธิภาพ โปร่งใส และตรวจสอบได้ พัฒนาระบบบริหารจัดการให้มีประสิทธิภาพ ถูกต้อง"> นโยบายที่ 13 พัฒนาระบบบริหารจัดการให้มีประสิทธิภาพ โปร่งใส และตรวจสอบได้ พัฒนาระบบบริหารจัดการให้มีประสิทธิภาพ ถูกต้อง</label>
+          </div>
+        </div>
+        <!-- จุดเน้น สพป.นย. -->
+        <div class="form-section">
+          <div class="form-section-head">จุดเน้น สพป.นย. <span class="hint">(เลือกได้มากกว่า 1)</span></div>
+          <div class="cb-group cb-grid3">
+            <label class="cb-item"><input type="checkbox" name="focus" value="ยกระดับผลสัมฤทธิ์"> ยกระดับผลสัมฤทธิ์</label>
+            <label class="cb-item"><input type="checkbox" name="focus" value="ทักษะคิดแก้ว่าคล่อง"> ทักษะคิดแก้ว่าคล่อง</label>
+            <label class="cb-item"><input type="checkbox" name="focus" value="ว่องไวเขียนอ่าน"> ว่องไวเขียนอ่าน</label>
+            <label class="cb-item"><input type="checkbox" name="focus" value="สื่อสารเทคโนโลยี"> สื่อสารเทคโนโลยี</label>
+            <label class="cb-item"><input type="checkbox" name="focus" value="จัดการดีสิ่งแวดล้อม"> จัดการดีสิ่งแวดล้อม</label>
+            <label class="cb-item"><input type="checkbox" name="focus" value="น้อมนำศาสตร์พระราชา"> น้อมนำศาสตร์พระราชา</label>
+          </div>
+        </div>
+        <!-- เป้าหมายหลักแผนพัฒนาคุณภาพกลุ่มโรงเรียนพระราชดำริ -->
+        <div class="form-section">
+          <div class="form-section-head">เป้าหมายหลักแผนพัฒนาคุณภาพกลุ่มโรงเรียนพระราชดำริ <span class="hint">(เลือกได้มากกว่า 1)</span></div>
+          <div class="cb-group cb-col">
+            <label class="cb-item"><input type="checkbox" name="royal_goal" value="เป้าหมายหลักที่ 1 เสริมสร้างสุขภาพของเด็กและเยาวชนตั้งแต่ในครรภ์มารดา"> เป้าหมายหลักที่ 1 เสริมสร้างสุขภาพของเด็กและเยาวชนตั้งแต่ในครรภ์มารดา</label>
+            <label class="cb-item"><input type="checkbox" name="royal_goal" value="เป้าหมายหลักที่ 2 เพิ่มโอกาสทางการศึกษา"> เป้าหมายหลักที่ 2 เพิ่มโอกาสทางการศึกษา</label>
+            <label class="cb-item"><input type="checkbox" name="royal_goal" value="เป้าหมายหลักที่ 3 เสริมสร้างศักยภาพของเด็กและเยาวชนทางวิชาการและทางจริยธรรม"> เป้าหมายหลักที่ 3 เสริมสร้างศักยภาพของเด็กและเยาวชนทางวิชาการและทางจริยธรรม</label>
+            <label class="cb-item"><input type="checkbox" name="royal_goal" value="เป้าหมายหลักที่ 4 เสริมสร้างศักยภาพของเด็กและเยาวชนทางการงานอาชีพ"> เป้าหมายหลักที่ 4 เสริมสร้างศักยภาพของเด็กและเยาวชนทางการงานอาชีพ</label>
+            <label class="cb-item"><input type="checkbox" name="royal_goal" value="เป้าหมายหลักที่ 5 ปลูกฝังจิตสำนึกและพัฒนาคุณภาพของเด็กและเยาวชนในการอนุรักษ์ทรัพยากรธรรมชาติและสิ่งแวดล้อม"> เป้าหมายหลักที่ 5 ปลูกฝังจิตสำนึกฯ อนุรักษ์ทรัพยากรธรรมชาติและสิ่งแวดล้อม</label>
+            <label class="cb-item"><input type="checkbox" name="royal_goal" value="เป้าหมายหลักที่ 6 เสริมสร้างศักยภาพของเด็กและเยาวชนในการอนุรักษ์และสืบทอดวัฒนธรรมภูมิปัญญาท้องถิ่นและของชาติไทย"> เป้าหมายหลักที่ 6 อนุรักษ์และสืบทอดวัฒนธรรมภูมิปัญญาท้องถิ่นและของชาติไทย</label>
+            <label class="cb-item"><input type="checkbox" name="royal_goal" value="เป้าหมายหลักที่ 7 ขยายการพัฒนาจากโรงเรียนสู่ชุมชน"> เป้าหมายหลักที่ 7 ขยายการพัฒนาจากโรงเรียนสู่ชุมชน</label>
+            <label class="cb-item"><input type="checkbox" name="royal_goal" value="เป้าหมายหลักที่ 8 พัฒนาสถานศึกษาเป็นศูนย์บริหารความรู้"> เป้าหมายหลักที่ 8 พัฒนาสถานศึกษาเป็นศูนย์บริหารความรู้</label>
+          </div>
+        </div>
+        <!-- กลยุทธ์ -->
+        <div class="form-section">
+          <div class="form-section-head">กลยุทธ์ (Strategy) <span class="hint">(เลือกได้มากกว่า 1)</span></div>
+          <div class="cb-group cb-col">
+            <label class="cb-item"><input type="checkbox" name="school_strategy" value="กลยุทธ์ที่ 1 สืบสานงานพระราชดำริของสมเด็จพระกนิษฐาธิราชเจ้า กรมสมเด็จพระเทพรัตนราชสุดาฯ สยามบรมราชกุมารี"> กลยุทธ์ที่ 1 สืบสานงานพระราชดำริของสมเด็จพระกนิษฐาธิราชเจ้า กรมสมเด็จพระเทพรัตนราชสุดาฯ สยามบรมราชกุมารี</label>
+            <label class="cb-item"><input type="checkbox" name="school_strategy" value="กลยุทธ์ที่ 2 ยกระดับคุณภาพผู้เรียนรอบด้าน เสริมสร้างทักษะชีวิตและทักษะอาชีพ"> กลยุทธ์ที่ 2 ยกระดับคุณภาพผู้เรียนรอบด้าน เสริมสร้างทักษะชีวิตและทักษะอาชีพ</label>
+            <label class="cb-item"><input type="checkbox" name="school_strategy" value="กลยุทธ์ที่ 3 การพัฒนากระบวนการจัดการเรียนการสอนที่เน้นผู้เรียนเป็นสำคัญ"> กลยุทธ์ที่ 3 การพัฒนากระบวนการจัดการเรียนการสอนที่เน้นผู้เรียนเป็นสำคัญ</label>
+            <label class="cb-item"><input type="checkbox" name="school_strategy" value="กลยุทธ์ที่ 4 พัฒนาครูให้มีคุณภาพตามมาตรฐานและมีมรรยาทวิชาชีพ"> กลยุทธ์ที่ 4 พัฒนาครูให้มีคุณภาพตามมาตรฐานและมีมรรยาทวิชาชีพ</label>
+            <label class="cb-item"><input type="checkbox" name="school_strategy" value="กลยุทธ์ที่ 5 ส่งเสริมพัฒนากระบวนการบริหารจัดการ โดยการมีส่วนร่วมจากทุกภาคส่วน"> กลยุทธ์ที่ 5 ส่งเสริมพัฒนากระบวนการบริหารจัดการ โดยการมีส่วนร่วมจากทุกภาคส่วน</label>
+            <label class="cb-item"><input type="checkbox" name="school_strategy" value="กลยุทธ์ที่ 6 สร้างสภาพแวดล้อมในสถานศึกษาให้เป็นพื้นที่ปลอดภัยและเอื้อต่อการเรียนรู้"> กลยุทธ์ที่ 6 สร้างสภาพแวดล้อมในสถานศึกษาให้เป็นพื้นที่ปลอดภัยและเอื้อต่อการเรียนรู้</label>
+          </div>
+          <div class="field mt-10"><label>ตัวชี้วัด</label><input id="f-kpi-strategy" placeholder="เช่น ทุกตัวชี้วัด"></div>
+        </div>
+        <!-- แผนงานงบประมาณ -->
+        <div class="form-section">
+          <div class="form-section-head">แผนงานงบประมาณ</div>
+          <div class="fields-2">
+            <div class="field">
+              <label>แผนงานงบประมาณ</label>
+              <select id="f-budget-plan">
+                <option value="">— เลือก —</option>
+                <option>เงินอุดหนุนค่าใช้จ่ายในการจัดการศึกษาขั้นพื้นฐาน</option>
+                <option>พื้นฐานด้านการพัฒนาและเสริมสร้างศักยภาพคน</option>
+                <option>พื้นฐานด้านการสร้างโอกาสและความเสมอภาคทางสังคม</option>
+                <option>พื้นฐานด้านการสร้างการเติบโตบนคุณภาพชีวิตที่เป็นมิตรกับสิ่งแวดล้อม</option>
+                <option>พื้นฐานด้านการปรับสมดุลและพัฒนาระบบการบริหารจัดการภาครัฐ</option>
+                <option>งบดำเนินงาน</option>
+                <option>งบลงทุน</option>
+                <option>งบบุคลากร</option>
+                <option>เงินนอกงบประมาณ</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>กลุ่มที่รับผิดชอบ</label>
+              <select id="f-resp-group">
+                <option value="">— เลือก —</option>
+                <option>บริหารงานทั่วไป</option>
+                <option>บริหารงานวิชาการ</option>
+                <option>บริหารงานบุคคล</option>
+                <option>บริหารงานงบประมาณ</option>
+                <option>กลุ่มสาระภาษาไทย</option>
+                <option>กลุ่มสาระคณิตศาสตร์</option>
+                <option>กลุ่มสาระวิทยาศาสตร์และเทคโนโลยี</option>
+                <option>กลุ่มสาระสังคมศึกษา</option>
+                <option>กลุ่มสาระภาษาต่างประเทศ</option>
+                <option>กลุ่มสาระศิลปะ</option>
+                <option>กลุ่มสาระสุขศึกษาและพลศึกษา</option>
+                <option>กลุ่มสาระการงานอาชีพ</option>
+                <option>งานกิจการนักเรียน</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <!-- 1. หลักการและเหตุผล -->
+        <div class="form-section">
+          <div class="form-section-head">1. หลักการและเหตุผล</div>
+          <div class="field"><textarea id="f-reason" rows="6" placeholder="สืบเนื่องจาก..."></textarea></div>
+        </div>
+        <!-- 2. วัตถุประสงค์ -->
+        <div class="form-section">
+          <div class="form-section-head">2. วัตถุประสงค์</div>
+          <div class="field"><label>ผลผลิต (Outputs)</label><textarea id="f-obj-output" rows="3" placeholder="1.1 เพื่อ...&#10;1.2 เพื่อ..."></textarea></div>
+          <div class="field mt-8"><label>ผลลัพธ์ (Outcomes)</label><textarea id="f-obj-outcome" rows="2" placeholder="นักเรียนมี..."></textarea></div>
+        </div>
+        <!-- 3. เป้าหมาย -->
+        <div class="form-section">
+          <div class="form-section-head">3. เป้าหมาย</div>
+          <div class="fields-2">
+            <div class="field"><label>เชิงปริมาณ</label><textarea id="f-goal-qty" rows="3" placeholder="- ร้อยละ 80 ..."></textarea></div>
+            <div class="field"><label>เชิงคุณภาพ</label><textarea id="f-goal-qual" rows="3" placeholder="- สถานศึกษามีลักษณะ..."></textarea></div>
+          </div>
+        </div>
+        <!-- 4. วิธีดำเนินการ -->
+        <div class="form-section">
+          <div class="form-section-head">4. วิธีดำเนินการ / ขั้นตอนการดำเนินงาน</div>
+          <div id="steps-wrap"></div>
+          <button class="btn-ghost mt-8" onclick="addStep()">+ เพิ่มขั้นตอน</button>
+        </div>
+        <!-- 5. งบประมาณ -->
+        <div class="form-section">
+          <div class="form-section-head">5. งบประมาณ</div>
+          <div class="fields-2" style="margin-bottom:14px">
+            <div class="field"><label>งบประมาณที่ขอ (บาท) <span class="req">*</span></label><input id="f-budget" type="number" placeholder="25000" min="0"></div>
+            <div class="field">
+              <label>แหล่งงบประมาณ</label>
+              <select id="f-budget-src">
+                <option value="">— เลือก —</option>
+                <option>พื้นฐานด้านการพัฒนาและเสริมสร้างศักยภาพคน</option>
+                <option>เงินอุดหนุนค่าใช้จ่ายในการจัดการศึกษาขั้นพื้นฐาน</option>
+                <option>พื้นฐานด้านการสร้างโอกาสและความเสมอภาคทางสังคม</option>
+                <option>พื้นฐานด้านการสร้างการเติบโตบนคุณภาพชีวิตที่เป็นมิตรกับสิ่งแวดล้อม</option>
+                <option>พื้นฐานด้านการปรับสมดุลและพัฒนาระบบการบริหารจัดการภาครัฐ</option>
+                <option>งบดำเนินงาน</option>
+                <option>งบลงทุน</option>
+                <option>งบบุคลากร</option>
+                <option>เงินนอกงบประมาณ</option>
+                <option>เงินระดมทรัพยากร</option>
+              </select>
+            </div>
+          </div>
+          <div id="budget-items"></div>
+          <button class="btn-ghost mt-8" onclick="addBudgetRow()">+ เพิ่มรายการ</button>
+          <div class="budget-total-row mt-10">
+            <span>รวมงบประมาณทั้งสิ้น</span>
+            <span id="budget-total" class="budget-total-num">0 บาท</span>
+          </div>
+        </div>
+        <!-- 6. การวิเคราะห์ความเสี่ยง -->
+        <div class="form-section">
+          <div class="form-section-head">6. การวิเคราะห์ความเสี่ยงของโครงการ</div>
+          <div class="field"><textarea id="f-risk" rows="3" placeholder="ปัจจัยความเสี่ยง: ...&#10;แนวทางแก้ไข: ..."></textarea></div>
+        </div>
+        <!-- 7. การประเมินผล -->
+        <div class="form-section">
+          <div class="form-section-head">7. การประเมินผล / ตัวชี้วัดความสำเร็จและค่าเป้าหมาย</div>
+          <div id="eval-wrap"></div>
+        </div>
+        <!-- 8. ผลลัพธ์ที่คาดว่าจะได้รับ -->
+        <div class="form-section">
+          <div class="form-section-head">8. ผลลัพธ์ / ผลผลิต ที่เกิดจากโครงการ</div>
+          <div class="field"><textarea id="f-result" rows="4" placeholder="9.1 นักเรียนรู้คุณค่าของ...&#10;9.2 นักเรียนมีส่วนร่วม..."></textarea></div>
+        </div>
+        <!-- ลงชื่อ -->
+        <div class="form-section">
+          <div class="form-section-head">ลงชื่อผู้เกี่ยวข้อง</div>
+
+          <!-- ผู้รับผิดชอบโครงการ (dynamic) -->
+          <div style="margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px">ผู้รับผิดชอบโครงการ</div>
+            <div id="signers-wrap"></div>
+            <button class="btn-ghost" style="margin-top:8px;font-size:12px" onclick="addSigner()">+ เพิ่มผู้รับผิดชอบ</button>
+          </div>
+
+          <div class="fields-2">
+            <div class="field">
+              <label>ผู้เสนอโครงการ</label>
+              <input id="f-sign2" placeholder="ชื่อ-นามสกุล">
+              <input id="f-sign2-pos" placeholder="ตำแหน่ง" style="margin-top:6px">
+            </div>
+            <div class="field">
+              <label>ผู้อำนวยการโรงเรียน / ผู้อนุมัติโครงการ</label>
+              <input id="f-sign3" value="นางสาวสู่ขวัญ ตลับนาค">
+            </div>
+          </div>
+        </div>
+        <div id="form-err" class="form-err hidden"></div>
+      </div>
+    </div>
+    <!-- DETAIL -->
+    <div id="page-detail" class="page hidden">
+      <div class="page-top flex-sb">
+        <div>
+          <button class="back-btn" onclick="nav('projects')">← กลับ</button>
+          <h1 id="det-title">รายละเอียดโครงการ</h1>
+        </div>
+        <div style="display:flex;gap:8px" id="det-actions"></div>
+      </div>
+      <div id="det-body"></div>
+    </div>
+    <!-- USERS -->
+    <div id="page-users" class="page hidden">
+      <div class="page-top flex-sb">
+        <div><h1>จัดการผู้ใช้งาน</h1><p class="page-desc" id="users-count"></p></div>
+        <button class="btn-prim" onclick="toggleAddUser()">+ เพิ่มผู้ใช้</button>
+      </div>
+      <div id="add-user-box" class="card hidden" style="margin-bottom:16px">
+        <div class="card-title mb-14">เพิ่มผู้ใช้ใหม่</div>
+        <div class="fields-4">
+          <div class="field"><label>อีเมล</label><input id="u-email" type="email"></div>
+          <div class="field"><label>ชื่อ-นามสกุล</label><input id="u-name"></div>
+          <div class="field"><label>หน่วยงาน</label><input id="u-dept"></div>
+          <div class="field"><label>บทบาท</label>
+            <select id="u-role">
+              <option value="teacher">ครู/อาจารย์</option>
+              <option value="finance">ฝ่ายงบประมาณ</option>
+              <option value="admin">ผู้บริหาร</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex-end mt-12">
+          <button class="btn-sec" onclick="toggleAddUser()">ยกเลิก</button>
+          <button class="btn-prim" onclick="addUser()">เพิ่มผู้ใช้</button>
+        </div>
+      </div>
+      <div id="users-table"></div>
+    </div>
+  </main>
+</div>
+<div id="toast" class="toast hidden"></div>
+<script>
+  const API_URL    = 'https://script.google.com/macros/s/AKfycbxT9XUl3lbSceQThtqN2SOIyHitQeSAGzWh1YSpismq2usRzSSy2MCWatjc5vJwszB9uA/exec';
+  const USER_EMAIL = 'teacher@school.ac.th';
+</script>
+<script src="app.js"></script>
+</body>
+</html>

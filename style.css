@@ -1,0 +1,424 @@
+/* ============================================================
+   ระบบบริหารโครงการ — โรงเรียนบ้านคลอง 14
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:#EEF0F4;color:#1C2333;font-size:15px;line-height:1.6}
+input,select,textarea,button{font-family:'Sarabun',sans-serif}
+
+/* ============================================================ LAYOUT */
+#app{display:flex;min-height:100vh}
+#main{flex:1;min-width:0;padding:28px 32px;overflow-y:auto}
+
+/* ============================================================ SIDEBAR */
+#sidebar{
+  width:252px;background:#1C2333;display:flex;flex-direction:column;
+  flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;
+}
+.sb-logo{
+  display:flex;align-items:center;gap:12px;
+  padding:24px 20px 18px;border-bottom:1px solid rgba(255,255,255,.07);
+}
+.sb-logo-badge{
+  width:40px;height:40px;border-radius:10px;
+  background:linear-gradient(135deg,#3B82F6,#6366F1);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Prompt',sans-serif;font-size:13px;color:#fff;font-weight:700;
+  flex-shrink:0;
+}
+.sb-school{font-size:13px;font-weight:700;color:#fff;line-height:1.3}
+.sb-sub{font-size:11px;color:#5A6A84;margin-top:2px}
+
+.sb-user{
+  display:flex;align-items:center;gap:10px;
+  padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.07);
+}
+.sb-avatar{
+  width:34px;height:34px;border-radius:50%;
+  background:linear-gradient(135deg,#3B82F6,#8B5CF6);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;color:#fff;font-weight:700;flex-shrink:0;
+}
+.sb-user-name{font-size:13px;color:#E2E8F0;font-weight:600;line-height:1.3}
+.sb-user-role{font-size:11px;color:#3B82F6}
+
+#nav{flex:1;padding:10px 10px}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:8px;
+  color:#7C8FA8;font-size:14px;text-decoration:none;
+  cursor:pointer;transition:all .15s;margin-bottom:2px;
+}
+.nav-item svg{width:16px;height:16px;fill:currentColor;flex-shrink:0}
+.nav-item:hover{background:rgba(255,255,255,.05);color:#CBD5E1}
+.nav-item.active{background:rgba(59,130,246,.15);color:#60A5FA}
+
+.sb-year{padding:14px 20px;font-size:11px;color:#3A4A5E}
+
+/* ============================================================ PAGE */
+.page{display:block}.page.hidden{display:none!important}
+.page-top{margin-bottom:24px}
+.page-top h1{font-family:'Prompt',sans-serif;font-size:22px;font-weight:700;color:#1C2333}
+.page-desc{font-size:13px;color:#7C8FA8;margin-top:4px}
+.flex-sb{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.flex-end{display:flex;justify-content:flex-end;gap:8px}
+
+/* ============================================================ KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.kpi-n{font-size:22px;font-weight:800;color:#1C2333;font-family:'Prompt',sans-serif}
+.kpi-l{font-size:12px;color:#7C8FA8;margin-top:4px}
+
+/* ============================================================ CARDS */
+.card{background:#fff;border-radius:12px;padding:20px 22px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card-title{font-size:14px;font-weight:700;color:#1C2333}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.mt-8{margin-top:8px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}.mb-14{margin-bottom:14px}
+
+/* status rows */
+.s-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.s-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.s-label{flex:1;font-size:13px;color:#374151}
+.s-count{font-size:13px;font-weight:700;color:#1C2333;min-width:24px;text-align:right}
+.s-bar-wrap{width:72px;height:5px;background:#EEF0F4;border-radius:9999px;overflow:hidden}
+.s-bar{height:100%;border-radius:9999px}
+
+.dept-row{margin-bottom:10px}
+.dept-head{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.dept-name{color:#374151}.dept-amt{font-weight:700;color:#1C2333}
+.mini-bar{height:5px;background:#EEF0F4;border-radius:9999px;overflow:hidden}
+.mini-fill{height:100%;border-radius:9999px;background:#3B82F6}
+
+.link-btn{background:none;border:none;color:#3B82F6;font-size:12px;cursor:pointer;padding:0}
+
+/* ============================================================ TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.tab-group{display:flex;gap:3px;background:#fff;border-radius:9px;padding:3px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.tab{padding:6px 13px;border-radius:7px;border:none;font-size:12px;cursor:pointer;background:transparent;color:#6B7280;font-family:'Sarabun',sans-serif;transition:all .15s;white-space:nowrap}
+.tab.active{background:#1C2333;color:#fff}
+.search{flex:1;min-width:200px;max-width:320px;padding:8px 14px;border-radius:9px;border:1.5px solid #E2E8F0;font-size:13px;background:#fff;outline:none}
+.search:focus{border-color:#3B82F6}
+
+/* ============================================================ PROJECT CARDS */
+.proj-card{
+  background:#fff;border-radius:12px;padding:18px 20px;
+  box-shadow:0 1px 3px rgba(0,0,0,.06);cursor:pointer;
+  margin-bottom:10px;transition:box-shadow .15s,transform .1s;
+  border-left:3px solid transparent;
+}
+.proj-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.10);transform:translateY(-1px)}
+.proj-card.pending  {border-left-color:#F59E0B}
+.proj-card.reviewing{border-left-color:#3B82F6}
+.proj-card.approved {border-left-color:#22C55E}
+.proj-card.rejected {border-left-color:#EF4444}
+.proj-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.proj-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.proj-dept{font-size:11px;color:#7C8FA8}
+.proj-name{font-size:15px;font-weight:700;color:#1C2333;margin-bottom:3px}
+.proj-owner{font-size:12px;color:#7C8FA8}
+.proj-right{text-align:right;flex-shrink:0}
+.proj-bud{font-size:17px;font-weight:800;color:#1C2333}
+.proj-bud-l{font-size:11px;color:#7C8FA8}
+.prog-wrap{margin-top:12px}
+.prog-info{display:flex;justify-content:space-between;font-size:11px;color:#7C8FA8;margin-bottom:3px}
+.prog-bar{height:5px;background:#EEF0F4;border-radius:9999px;overflow:hidden}
+.prog-fill{height:100%;border-radius:9999px}
+
+/* badge */
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 9px;border-radius:9999px;letter-spacing:.04em}
+.badge-pending  {background:#FEF9EE;color:#D97706}
+.badge-reviewing{background:#EFF6FF;color:#3B82F6}
+.badge-approved {background:#F0FDF4;color:#16A34A}
+.badge-rejected {background:#FEF2F2;color:#DC2626}
+
+/* ============================================================ FORM */
+.form-wrap{max-width:100%}
+.form-section{background:#fff;border-radius:12px;padding:22px 24px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.form-section-head{font-size:13px;font-weight:700;color:#3B82F6;text-transform:uppercase;letter-spacing:.08em;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid #EEF0F4}
+.fields-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fields-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.span-2{grid-column:span 2}
+.field label{font-size:12px;font-weight:600;color:#374151}
+.field input,.field select,.field textarea{
+  padding:9px 12px;border-radius:8px;border:1.5px solid #E2E8F0;
+  font-size:14px;background:#FAFBFC;outline:none;resize:vertical;
+}
+/* ให้ select แสดงข้อความยาวได้เต็ม */
+.field select{
+  white-space:normal;
+  height:auto;
+  min-height:40px;
+  word-wrap:break-word;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#3B82F6;background:#fff}
+.req{color:#EF4444}
+
+/* budget table */
+.bud-row{display:grid;grid-template-columns:1fr 180px 36px;gap:8px;margin-bottom:8px;align-items:center}
+.bud-row input{padding:8px 10px;border-radius:7px;border:1.5px solid #E2E8F0;font-size:13px;background:#FAFBFC;outline:none;width:100%}
+.bud-row input:focus{border-color:#3B82F6}
+.bud-del{background:none;border:none;color:#EF4444;cursor:pointer;font-size:18px;line-height:1;padding:4px}
+.budget-total-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#EEF0F4;border-radius:8px;font-size:13px;font-weight:600;color:#374151}
+.budget-total-num{font-size:16px;font-weight:800;color:#1C2333;font-family:'Prompt',sans-serif}
+
+.form-err{background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;font-size:13px;color:#DC2626;margin-top:8px}
+.back-btn{background:none;border:none;color:#3B82F6;font-size:13px;cursor:pointer;padding:0;margin-bottom:6px;display:block}
+
+/* ============================================================ DETAIL */
+.det-header-meta{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.det-id{font-size:11px;color:#7C8FA8}
+.det-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.mini-kpi{background:#fff;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.mini-kpi-l{font-size:11px;color:#7C8FA8;margin-bottom:4px}
+.mini-kpi-v{font-size:19px;font-weight:800;font-family:'Prompt',sans-serif}
+.mini-kpi-u{font-size:11px;color:#7C8FA8}
+
+.det-tabs{display:flex;border-bottom:2px solid #EEF0F4;margin-bottom:16px}
+.det-tab{padding:9px 16px;background:none;border:none;font-size:13px;cursor:pointer;color:#7C8FA8;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:'Sarabun',sans-serif}
+.det-tab.active{color:#1C2333;font-weight:700;border-bottom-color:#1C2333}
+
+.info-block{margin-bottom:14px}
+.info-lbl{font-size:11px;font-weight:700;color:#7C8FA8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.info-val{font-size:14px;color:#374151;white-space:pre-wrap}
+
+.appr-panel{margin-top:20px;padding-top:18px;border-top:1px solid #EEF0F4}
+.appr-btns{display:flex;gap:8px}
+.btn-review {background:#EFF6FF;color:#1D4ED8;border:none;padding:8px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Sarabun',sans-serif}
+.btn-approve{background:#F0FDF4;color:#15803D;border:none;padding:8px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Sarabun',sans-serif;font-weight:700}
+.btn-reject {background:#FEF2F2;color:#DC2626;border:none;padding:8px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Sarabun',sans-serif}
+
+.exp-add-btn{background:#1C2333;color:#fff;border:none;padding:9px 18px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;margin-bottom:12px}
+.data-table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.data-table th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#7C8FA8;letter-spacing:.06em;background:#F8F9FB}
+.data-table td{padding:10px 14px;font-size:13px;color:#374151;border-top:1px solid #EEF0F4}
+.data-table .total-row td{border-top:2px solid #E2E8F0;background:#F8F9FB;font-weight:700}
+
+/* ============================================================ USERS */
+.edit-btn{background:#F1F5F9;border:none;color:#374151;padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-family:'Sarabun',sans-serif}
+.role-badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:9999px}
+
+/* ============================================================ BUTTONS */
+.btn-prim{background:#1C2333;color:#fff;border:none;padding:9px 20px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;transition:opacity .15s;white-space:nowrap}
+.btn-prim:hover{opacity:.85}
+.btn-prim:disabled{opacity:.5;cursor:not-allowed}
+.btn-sec{background:#F1F5F9;color:#374151;border:none;padding:9px 18px;border-radius:9px;font-size:13px;cursor:pointer;font-family:'Sarabun',sans-serif}
+.btn-ghost{background:none;border:1.5px dashed #CBD5E1;color:#7C8FA8;padding:7px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Sarabun',sans-serif}
+.btn-ghost:hover{border-color:#3B82F6;color:#3B82F6}
+
+/* ============================================================ EMPTY / LOADING */
+.empty{text-align:center;padding:48px 0;color:#7C8FA8}
+.empty-icon{font-size:32px;margin-bottom:10px}
+.loading{color:#7C8FA8;font-size:14px;padding:24px}
+
+/* ============================================================ TOAST */
+.toast{
+  position:fixed;bottom:24px;right:24px;background:#1C2333;color:#fff;
+  padding:12px 18px;border-radius:10px;font-size:13px;
+  box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:9999;
+  border-left:4px solid #22C55E;animation:slideUp .3s ease;
+}
+.toast.error{border-left-color:#EF4444}
+.toast.info {border-left-color:#3B82F6}
+@keyframes slideUp{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ============================================================ PRINT OVERLAY (see bottom of file for full styles) */
+
+/* @media print อยู่ด้านล่างสุดของไฟล์ */
+
+.doc-header{text-align:center;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #1C2333}
+.doc-school{font-size:16px;font-weight:700;margin-bottom:2px}
+.doc-sub{font-size:13px;color:#555}
+.doc-title{font-size:20px;font-weight:800;font-family:'Prompt',sans-serif;margin:12px 0 4px}
+.doc-id{font-size:12px;color:#888}
+.doc-section{margin-bottom:18px}
+.doc-section-title{font-size:13px;font-weight:700;background:#1C2333;color:#fff;padding:5px 12px;border-radius:4px;margin-bottom:10px}
+.doc-row{display:flex;gap:0;margin-bottom:4px;font-size:13px}
+.doc-key{min-width:180px;color:#555;flex-shrink:0}
+.doc-val{color:#1C2333;flex:1}
+.doc-text{font-size:13px;line-height:1.8;white-space:pre-wrap;color:#1C2333}
+.doc-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.doc-table th{background:#EEF0F4;padding:6px 10px;text-align:left;border:1px solid #CBD5E1}
+.doc-table td{padding:6px 10px;border:1px solid #CBD5E1}
+.doc-table .total-row{background:#F8F9FB;font-weight:700}
+.doc-sign{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px}
+.doc-sign-box{text-align:center}
+.doc-sign-line{border-bottom:1px solid #1C2333;margin:40px 20px 6px}
+.doc-sign-name{font-size:12px;color:#555}
+
+.hidden{display:none!important}
+
+/* ============================================================ EXTRA FORM STYLES */
+.fields-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+
+/* Budget table header */
+.bud-table-head{display:flex;gap:6px;padding:6px 8px;background:#EEF0F4;border-radius:6px;font-size:11px;font-weight:700;color:#7C8FA8;margin-bottom:6px;letter-spacing:.04em}
+
+/* Budget row with 4 amount columns */
+.bud-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+.bud-row .bud-name{flex:2}
+.bud-row .bud-amt{width:100px}
+.bud-row input{padding:7px 9px;border-radius:7px;border:1.5px solid #E2E8F0;font-size:13px;background:#FAFBFC;outline:none;width:100%}
+.bud-row input:focus{border-color:#3B82F6}
+.bud-del{background:none;border:none;color:#EF4444;cursor:pointer;font-size:18px;line-height:1;padding:2px 6px;width:36px;flex-shrink:0}
+
+/* Steps table */
+.step-row{display:grid;grid-template-columns:36px 1fr 120px 140px 100px 36px;gap:6px;margin-bottom:6px;align-items:start}
+.step-row input,.step-row textarea{padding:7px 9px;border-radius:7px;border:1.5px solid #E2E8F0;font-size:13px;background:#FAFBFC;outline:none;width:100%;font-family:'Sarabun',sans-serif}
+.step-row textarea{resize:none;min-height:38px;overflow:hidden;line-height:1.6}
+.step-row input:focus,.step-row textarea:focus{border-color:#3B82F6;background:#fff}
+.step-head{display:grid;grid-template-columns:36px 1fr 120px 140px 100px 36px;gap:6px;padding:5px 0;font-size:11px;font-weight:700;color:#7C8FA8;letter-spacing:.04em;margin-bottom:4px}
+
+/* Eval table */
+.eval-row{display:grid;grid-template-columns:1fr 100px 1fr 1fr 36px;gap:6px;margin-bottom:6px;align-items:start}
+.eval-row input,.eval-row textarea{padding:7px 9px;border-radius:7px;border:1.5px solid #E2E8F0;font-size:13px;background:#FAFBFC;outline:none;width:100%}
+.eval-row input:focus{border-color:#3B82F6}
+.eval-head{display:grid;grid-template-columns:1fr 100px 1fr 1fr 36px;gap:6px;padding:5px 0;font-size:11px;font-weight:700;color:#7C8FA8;letter-spacing:.04em;margin-bottom:4px}
+
+/* ============================================================ PRINT STYLES (new window) */
+/* print-overlay ไม่ใช้แล้ว — เปิด window ใหม่แทน */
+/* ============================================================ CHECKBOX / RADIO GROUP */
+.cb-group{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.cb-group.cb-col{flex-direction:column}
+.cb-group.cb-grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cb-group.cb-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.cb-item{
+  display:flex;align-items:flex-start;gap:8px;
+  font-size:13px;color:#374151;cursor:pointer;
+  padding:5px 8px;border-radius:6px;
+  transition:background .1s;
+  line-height:1.5;
+}
+.cb-item:hover{background:#F0F4FF}
+.cb-item input[type=checkbox],
+.cb-item input[type=radio]{
+  margin-top:3px;flex-shrink:0;
+  width:15px;height:15px;cursor:pointer;
+  accent-color:#3B82F6;
+}
+.hint{font-size:11px;font-weight:400;color:#888}
+
+/* ============================================================ APPR PANEL */
+.appr-panel{margin-top:16px;padding:14px;background:#F8F9FB;border-radius:8px;border:1px solid #E2E8F0}
+.appr-btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn-review{background:#EFF6FF;color:#3B82F6;border:1.5px solid #3B82F6;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif}
+.btn-approve{background:#F0FDF4;color:#16A34A;border:1.5px solid #16A34A;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif}
+.btn-reject{background:#FEF2F2;color:#DC2626;border:1.5px solid #DC2626;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif}
+
+/* det tabs */
+.det-tabs{display:flex;gap:3px;margin-bottom:12px;flex-wrap:wrap}
+.det-tab{padding:7px 16px;border-radius:7px;border:1.5px solid #E2E8F0;background:#fff;font-size:13px;cursor:pointer;font-family:'Sarabun',sans-serif;color:#6B7280;transition:all .15s}
+.det-tab.active{background:#1C2333;color:#fff;border-color:#1C2333}
+.info-block{padding:10px 0;border-bottom:1px solid #EEF0F4;display:flex;gap:12px}
+.info-lbl{font-size:12px;color:#7C8FA8;min-width:150px;flex-shrink:0}
+.info-val{font-size:13px;color:#1C2333;white-space:pre-wrap;flex:1}
+.exp-add-btn{display:inline-block;margin-bottom:12px;background:#EFF6FF;color:#3B82F6;border:1.5px solid #3B82F6;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif}
+.data-table{width:100%;border-collapse:collapse;font-size:13px}
+.data-table th{background:#F8F9FB;padding:8px 12px;text-align:left;border-bottom:2px solid #E2E8F0;font-size:12px;color:#6B7280;font-weight:700}
+.data-table td{padding:8px 12px;border-bottom:1px solid #EEF0F4;color:#1C2333}
+.data-table tr:hover td{background:#FAFBFC}
+.data-table .right{text-align:right}
+.total-row td{font-weight:800;background:#F8F9FB}
+.edit-btn{background:none;border:none;color:#3B82F6;font-size:12px;cursor:pointer;font-weight:600;font-family:'Sarabun',sans-serif}
+.role-badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:9999px}
+.mt-10{margin-top:10px}
+
+/* ============================================================ BUDGET CARD (new expandable) */
+.bud-card{
+  border:1.5px solid #E2E8F0;border-radius:10px;
+  margin-bottom:12px;overflow:hidden;background:#fff;
+}
+.bud-card-head{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;background:#F8FAFC;
+  border-bottom:1.5px solid #E2E8F0;
+}
+.bud-card-head .bud-name{
+  flex:1;border:none;background:transparent;
+  font-size:14px;font-weight:600;color:#1C2333;
+  outline:none;font-family:'Sarabun',sans-serif;
+  padding:2px 4px;
+}
+.bud-card-head .bud-name:focus{
+  background:#EFF6FF;border-radius:5px;
+}
+.bud-total-badge{
+  font-size:13px;font-weight:800;color:#1C2333;
+  background:#E2E8F0;padding:3px 12px;border-radius:20px;
+  white-space:nowrap;flex-shrink:0;
+}
+.bud-sub-grid{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  gap:0;
+}
+.bud-sub-col{
+  padding:10px 14px;border-right:1px solid #EEF0F4;
+  opacity:.55;transition:opacity .15s;
+}
+.bud-sub-col:last-child{border-right:none}
+.bud-sub-col.has-val{opacity:1}
+.bud-sub-label{margin-bottom:8px}
+.bud-sub-cb{
+  display:flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:700;color:#374151;cursor:pointer;
+}
+.bud-sub-cb input[type=checkbox]{
+  width:15px;height:15px;accent-color:#3B82F6;cursor:pointer;
+  flex-shrink:0;
+}
+.bud-sub-body{display:flex;flex-direction:column;gap:6px}
+.bud-sub-amt{
+  width:100%;padding:7px 10px;border-radius:7px;
+  border:1.5px solid #E2E8F0;font-size:13px;
+  background:#FAFBFC;outline:none;
+  font-family:'Sarabun',sans-serif;
+}
+.bud-sub-amt:focus{border-color:#3B82F6;background:#fff}
+.bud-sub-detail{
+  width:100%;padding:6px 10px;border-radius:7px;
+  border:1.5px solid #E2E8F0;font-size:12px;color:#374151;
+  background:#FAFBFC;outline:none;resize:vertical;
+  font-family:'Sarabun',sans-serif;line-height:1.6;
+}
+.bud-sub-detail:focus{border-color:#3B82F6;background:#fff}
+
+/* ============================================================ EVAL SECTIONS */
+.eval-section{border:1.5px solid #E2E8F0;border-radius:10px;overflow:hidden}
+.eval-type-label{
+  font-size:12px;font-weight:800;letter-spacing:.06em;
+  padding:6px 14px;
+}
+.eval-type-label.qty{background:#EFF6FF;color:#2563EB;border-bottom:1.5px solid #BFDBFE}
+.eval-type-label.qual{background:#F0FDF4;color:#16A34A;border-bottom:1.5px solid #BBF7D0}
+.eval-head{
+  display:grid;grid-template-columns:1fr 100px 1fr 1fr 36px;
+  gap:6px;padding:6px 10px;
+  font-size:11px;font-weight:700;color:#7C8FA8;
+  letter-spacing:.04em;background:#FAFBFC;
+  border-bottom:1px solid #EEF0F4;
+}
+.eval-row{
+  display:grid;grid-template-columns:1fr 100px 1fr 1fr 36px;
+  gap:6px;padding:8px 10px;
+  border-bottom:1px solid #EEF0F4;align-items:start;
+}
+.eval-row:last-child{border-bottom:none}
+.eval-row input,.eval-row textarea{
+  padding:7px 9px;border-radius:7px;border:1.5px solid #E2E8F0;
+  font-size:13px;background:#FAFBFC;outline:none;width:100%;
+  font-family:'Sarabun',sans-serif;resize:none;overflow:hidden;
+}
+.eval-row textarea{min-height:38px;line-height:1.6}
+.eval-row input:focus,.eval-row textarea:focus{border-color:#3B82F6;background:#fff}
+
+/* ============================================================ SIGNER ROWS */
+.signer-row{
+  display:grid;grid-template-columns:1fr 1fr 32px;
+  gap:8px;margin-bottom:8px;align-items:center;
+}
+.signer-row input{
+  padding:8px 11px;border-radius:8px;
+  border:1.5px solid #E2E8F0;font-size:13px;
+  background:#FAFBFC;outline:none;width:100%;
+  font-family:'Sarabun',sans-serif;
+}
+.signer-row input:focus{border-color:#3B82F6;background:#fff}
