@@ -5,7 +5,7 @@
 // ================================================================
 
 const SHEET_ID = '1uMBsGe6zAMlOEYcpDaJ-wHZa-WE8f3PZQKC27cgZ8fA';
-const S = { P:'Projects', E:'Expenses', U:'Users', L:'Log' };
+const S = { P:'Projects', E:'Expenses', ER:'ExpenseRequests', U:'Users', L:'Log', C:'Config' };
 
 function doGet(e)  { return run(e); }
 function doPost(e) { return run(e); }
@@ -54,11 +54,18 @@ function run(e) {
       case 'getProject':    return j(getProject(all.id));
       case 'saveProject':   return j(saveProject(all, who));
       case 'updateStatus':  return j(updateStatus(all, who));
-      case 'getExpenses':   return j(getExpenses(all.projectId));
-      case 'addExpense':    return j(addExpense(all, who));
-      case 'deleteExpense': return j(deleteExpense(all.expenseId, who));
-      case 'getDashboard':  return j(getDashboard(who));
-      case 'getUsers':      return j(getUsers(who));
+      case 'getExpenses':        return j(getExpenses(all.projectId));
+      case 'addExpense':          return j(addExpense(all, who));
+      case 'deleteExpense':       return j(deleteExpense(all.expenseId, who));
+      case 'requestExpense':      return j(requestExpense(all, who));
+      case 'getExpenseRequests':  return j(getExpenseRequests(all, who));
+      case 'approveExpense':      return j(approveExpense(all, who));
+      case 'rejectExpense':       return j(rejectExpense(all, who));
+      case 'getDashboard':      return j(getDashboard(who));
+      case 'getBudgetConfig':   return j(getBudgetConfig(who));
+      case 'saveBudgetConfig':  return j(saveBudgetConfig(all, who));
+      case 'getLog':            return j(getLog(who));
+      case 'getUsers':          return j(getUsers(who));
       case 'saveUser':      return j(saveUser(all, who));
       default:              return j({ok:false,message:'unknown action: '+act});
     }
@@ -164,14 +171,86 @@ function updateStatus(b, who) {
   return {ok:false,message:'ไม่พบโครงการ'};
 }
 
-// ---- Expenses ----
+// ---- Expenses (อ่านรายการที่อนุมัติแล้ว) ----
 function getExpenses(projectId) {
   const rows = sheet(S.E).getDataRange().getValues();
   const h    = rows[0];
-  return {ok:true, expenses: rows.slice(1).filter(r=>!projectId||r[1]===projectId).map(r=>toObj(h,r))};
+  return {ok:true, expenses: rows.slice(1)
+    .filter(r=>!projectId||r[1]===projectId)
+    .map(r=>toObj(h,r))};
+}
+
+// ---- Expense Requests (คำขอเบิกจาก teacher) ----
+function requestExpense(b, who) {
+  if (who.role !== 'teacher') return {ok:false, message:'เฉพาะครูเท่านั้นที่ยื่นคำขอได้'};
+  const id  = 'EREQ-'+Utilities.getUuid().slice(0,8).toUpperCase();
+  const now = new Date().toISOString();
+  sheet(S.ER).appendRow([
+    id, b.project_id, b.item, Number(b.amount), b.date||'',
+    who.email, who.name, now, b.note||'', 'pending', '', ''
+  ]);
+  log(b.project_id, who.email, 'expense_request', `ขอเบิก: ${b.item} ${b.amount} บาท`);
+  return {ok:true, request_id:id};
+}
+
+function getExpenseRequests(b, who) {
+  const rows = sheet(S.ER).getDataRange().getValues();
+  const h    = rows[0];
+  let list   = rows.slice(1).map(r=>toObj(h,r));
+  // teacher เห็นแค่ของตัวเอง
+  if (who.role === 'teacher') list = list.filter(r=>r.requested_by===who.email);
+  // กรองตาม projectId ถ้ามี
+  if (b.projectId) list = list.filter(r=>r.project_id===b.projectId);
+  return {ok:true, requests:list};
+}
+
+function approveExpense(b, who) {
+  if (who.role !== 'finance' && who.role !== 'admin')
+    return {ok:false, message:'เฉพาะฝ่ายงบประมาณเท่านั้น'};
+  const sh   = sheet(S.ER);
+  const rows = sh.getDataRange().getValues();
+  const h    = rows[0];
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === b.requestId) {
+      // อัปเดต ExpenseRequests → approved
+      sh.getRange(i+1, h.indexOf('status')+1).setValue('approved');
+      sh.getRange(i+1, h.indexOf('approved_by')+1).setValue(who.email);
+      sh.getRange(i+1, h.indexOf('approved_at')+1).setValue(new Date().toISOString());
+      // บันทึกเข้า Expenses จริง
+      const expId = 'EXP-'+Utilities.getUuid().slice(0,8).toUpperCase();
+      sheet(S.E).appendRow([
+        expId, rows[i][1], rows[i][2], Number(rows[i][3]),
+        rows[i][4], rows[i][5], new Date().toISOString(), rows[i][8]
+      ]);
+      log(rows[i][1], who.email, 'expense_approved', `อนุมัติ: ${rows[i][2]} ${rows[i][3]} บาท`);
+      return {ok:true};
+    }
+  }
+  return {ok:false, message:'ไม่พบคำขอ'};
+}
+
+function rejectExpense(b, who) {
+  if (who.role !== 'finance' && who.role !== 'admin')
+    return {ok:false, message:'เฉพาะฝ่ายงบประมาณเท่านั้น'};
+  const sh   = sheet(S.ER);
+  const rows = sh.getDataRange().getValues();
+  const h    = rows[0];
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === b.requestId) {
+      sh.getRange(i+1, h.indexOf('status')+1).setValue('rejected');
+      sh.getRange(i+1, h.indexOf('approved_by')+1).setValue(who.email);
+      sh.getRange(i+1, h.indexOf('approved_at')+1).setValue(new Date().toISOString());
+      if (b.note) sh.getRange(i+1, h.indexOf('note')+1).setValue(b.note);
+      log(rows[i][1], who.email, 'expense_rejected', `ปฏิเสธ: ${rows[i][2]} เหตุผล: ${b.note||'-'}`);
+      return {ok:true};
+    }
+  }
+  return {ok:false, message:'ไม่พบคำขอ'};
 }
 
 function addExpense(b, who) {
+  // ใช้เฉพาะ finance/admin บันทึกตรงโดยไม่ผ่านคำขอ (legacy)
+  if (who.role === 'teacher') return {ok:false, message:'กรุณาใช้ระบบยื่นคำขอเบิก'};
   const id = 'EXP-'+Utilities.getUuid().slice(0,8).toUpperCase();
   sheet(S.E).appendRow([id, b.project_id, b.item, Number(b.amount), b.date||'', who.email, new Date().toISOString(), b.note||'']);
   return {ok:true, expense_id:id};
@@ -204,6 +283,46 @@ function getDashboard(who) {
     byDept[d].requested+=Number(r[5]); byDept[d].count++;
   });
   return {ok:true, dashboard:{totalReq,totalAppr,totalSpent,byStatus,byDept,count:list.length}};
+}
+
+// ---- Log Reader ----
+function getLog(who) {
+  if (who.role !== 'admin') return {ok:false, message:'ไม่มีสิทธิ์'};
+  const rows = sheet(S.L).getDataRange().getValues();
+  const h    = rows[0];
+  return {ok:true, logs: rows.slice(1).map(r=>toObj(h,r))};
+}
+
+// ---- Budget Config ----
+function getBudgetConfig(who) {
+  const sh = sheet(S.C);
+  const rows = sh.getDataRange().getValues();
+  // หาแถวที่มี key = 'total_budget'
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === 'total_budget') {
+      return {ok:true, config:{
+        total_budget: Number(rows[i][1]||0),
+        updated_at:   rows[i][2]||'',
+        updated_by:   rows[i][3]||''
+      }};
+    }
+  }
+  return {ok:true, config:{total_budget:0, updated_at:'', updated_by:''}};
+}
+
+function saveBudgetConfig(b, who) {
+  if (who.role !== 'finance' && who.role !== 'admin') return {ok:false,message:'ไม่มีสิทธิ์'};
+  const sh = sheet(S.C);
+  const rows = sh.getDataRange().getValues();
+  const now = new Date().toISOString();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === 'total_budget') {
+      sh.getRange(i+1, 1, 1, 4).setValues([['total_budget', Number(b.total_budget), now, who.email]]);
+      return {ok:true};
+    }
+  }
+  sh.appendRow(['total_budget', Number(b.total_budget), now, who.email]);
+  return {ok:true};
 }
 
 // ---- Users ----
@@ -248,8 +367,10 @@ function sheet(name) {
         'sign1','sign1_pos','sign2','sign2_pos','sign3','signers','note'
       ],
       Expenses: ['expense_id','project_id','item','amount','date','added_by','created_at','note'],
+      ExpenseRequests: ['request_id','project_id','item','amount','date','requested_by','requested_name','created_at','note','status','approved_by','approved_at'],
       Users:    ['email','name','dept','role','active'],
-      Log:      ['log_id','project_id','actor','action','note','ts']
+      Log:      ['log_id','project_id','actor','action','note','ts'],
+      Config:   ['key','value','updated_at','updated_by']
     };
     if (headers[name]) s.appendRow(headers[name]);
   }
@@ -281,7 +402,7 @@ function j(data) {
 //  SETUP — รันครั้งแรกเพื่อสร้าง Sheets + ผู้ใช้ตัวอย่าง
 // ================================================================
 function setup() {
-  Object.values(S).forEach(n => sheet(n));
+  Object.values(S).forEach(n => sheet(n));  // รวม Config แล้ว
   const u = sheet(S.U);
   if (u.getLastRow() <= 1) {
     u.appendRow(['admin@school.ac.th',   'ผู้อำนวยการ',           'ฝ่ายบริหาร',  'admin',   true]);
