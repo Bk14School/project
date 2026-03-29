@@ -7,52 +7,172 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Prompt:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 <div id="app">
+  <!-- Mobile overlay -->
+  <div id="sb-overlay" class="sb-overlay" onclick="closeSidebar()"></div>
+
   <aside id="sidebar">
     <div class="sb-logo">
       <div class="sb-logo-badge">ร.ร.</div>
-      <div>
+      <div style="flex:1">
         <div class="sb-school">โรงเรียนบ้านคลอง 14</div>
         <div class="sb-sub">สพป.นครนายก · ระบบงบประมาณ</div>
       </div>
+      <button class="sb-close" onclick="closeSidebar()">✕</button>
     </div>
-    <div class="sb-user">
+    <div class="sb-user" id="sb-user-box">
       <div class="sb-avatar" id="sb-avatar">?</div>
       <div class="sb-user-info">
-        <div class="sb-user-name" id="sb-name">กำลังโหลด...</div>
-        <div class="sb-user-role" id="sb-role"></div>
+        <div class="sb-user-name" id="sb-name">ผู้เยี่ยมชม</div>
+        <div class="sb-user-role" id="sb-role">ยังไม่ได้เข้าสู่ระบบ</div>
       </div>
+    </div>
+    <div class="sb-login-area" id="sb-login-area">
+      <button class="btn-login" onclick="openLogin()">🔑 เข้าสู่ระบบ</button>
     </div>
     <nav id="nav">
       <a class="nav-item" data-page="dashboard"><svg viewBox="0 0 20 20"><path d="M2 11h7V2H2v9zm0 7h7v-5H2v5zm9 0h7v-9h-7v9zm0-16v5h7V2h-7z"/></svg>ภาพรวม</a>
       <a class="nav-item" data-page="projects"><svg viewBox="0 0 20 20"><path d="M4 4h12v2H4V4zm0 4h12v2H4V8zm0 4h8v2H4v-2z"/></svg>โครงการทั้งหมด</a>
       <a class="nav-item teacher-only hidden" data-page="form"><svg viewBox="0 0 20 20"><path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4z"/></svg>เสนอโครงการ</a>
       <a class="nav-item admin-only hidden" data-page="users"><svg viewBox="0 0 20 20"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zm8 0a3 3 0 11-6 0 3 3 0 016 0zM3 17a5 5 0 0110 0H3zm10-1a5 5 0 0110 0h-4a5 5 0 00-6 0z"/></svg>จัดการผู้ใช้</a>
+      <a class="nav-item finance-only hidden" data-page="budget-config"><svg viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM2 9v7a2 2 0 002 2h12a2 2 0 002-2V9H2zm5 4h6v2H7v-2z"/></svg>กำหนดงบประมาณ</a>
+      <a class="nav-item admin-only hidden" data-page="log"><svg viewBox="0 0 20 20"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-.293.707L13 10.414V17a1 1 0 01-.553.894l-4 2A1 1 0 017 19v-8.586L3.293 6.707A1 1 0 013 6V4z"/></svg>ประวัติการใช้งาน</a>
     </nav>
     <div class="sb-year">ปีงบประมาณ <span id="bud-year"></span></div>
   </aside>
   <main id="main">
+    <!-- Mobile topbar -->
+    <div class="mobile-topbar">
+      <button class="hamburger" onclick="openSidebar()">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="mobile-title" id="mobile-title">ภาพรวม</div>
+    </div>
     <!-- DASHBOARD -->
     <div id="page-dashboard" class="page">
-      <div class="page-top"><h1 id="greet">ภาพรวม</h1><p class="page-desc">สรุปโครงการและงบประมาณประจำปี</p></div>
+      <div class="page-top"><h1 id="greet">ภาพรวม</h1><p class="page-desc" id="dash-desc">สรุปโครงการและงบประมาณประจำปี</p></div>
+
+      <!-- Finance Action Panel (เฉพาะ finance/admin) -->
+      <div id="finance-panel" style="display:none">
+        <div class="action-panel-grid" id="action-kpis">
+          <!-- filled by JS -->
+        </div>
+        <div class="grid-2" style="margin-bottom:14px">
+          <!-- รอพิจารณาโครงการ -->
+          <div class="card action-card">
+            <div class="action-card-head">
+              <div class="action-card-title">📋 โครงการรอพิจารณา</div>
+              <span class="action-badge pending" id="badge-pending">—</span>
+            </div>
+            <div id="list-pending-proj" class="action-list">
+              <div class="skel-list"></div>
+            </div>
+            <button class="link-btn mt-8" onclick="nav('projects')">ดูทั้งหมด →</button>
+          </div>
+          <!-- รอเบิกจ่าย -->
+          <div class="card action-card">
+            <div class="action-card-head">
+              <div class="action-card-title">💸 คำขอเบิกจ่ายรออนุมัติ</div>
+              <span class="action-badge warn" id="badge-exp-req">—</span>
+            </div>
+            <div id="list-exp-requests" class="action-list">
+              <div class="skel-list"></div>
+            </div>
+          </div>
+        </div>
+        <!-- โครงการอนุมัติแล้ว ติดตามการใช้งบ -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="action-card-head">
+            <div class="action-card-title">📊 โครงการที่อนุมัติแล้ว — ติดตามงบ</div>
+            <span id="badge-approved" class="action-badge ok">—</span>
+          </div>
+          <div id="list-approved-proj" class="mt-12"></div>
+        </div>
+      </div>
+
+      <!-- วงเงินงบประมาณรวม -->
+      <div class="budget-banner" id="budget-banner" style="display:none">
+        <div class="budget-banner-top">
+          <div>
+            <div class="budget-banner-label">วงเงินงบประมาณปีนี้</div>
+            <div class="budget-banner-total" id="bb-total">—</div>
+          </div>
+          <div class="budget-banner-right">
+            <div class="bb-stat"><div class="bb-stat-l">อนุมัติแล้ว</div><div class="bb-stat-v approved" id="bb-appr">—</div></div>
+            <div class="bb-stat"><div class="bb-stat-l">เบิกจ่ายแล้ว</div><div class="bb-stat-v spent" id="bb-spent">—</div></div>
+            <div class="bb-stat"><div class="bb-stat-l">คงเหลือ</div><div class="bb-stat-v remain" id="bb-remain">—</div></div>
+          </div>
+        </div>
+        <div class="bb-bars">
+          <div class="bb-bar-row">
+            <div class="bb-bar-label">อนุมัติ <span id="bb-appr-pct">0</span>%</div>
+            <div class="bb-bar-track"><div class="bb-bar-fill appr" id="bb-bar-appr" style="width:0%"></div></div>
+          </div>
+          <div class="bb-bar-row">
+            <div class="bb-bar-label">เบิกจ่าย <span id="bb-spent-pct">0</span>%</div>
+            <div class="bb-bar-track"><div class="bb-bar-fill spent" id="bb-bar-spent" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
       <div class="kpi-row">
         <div class="kpi" id="kpi-count"><div class="kpi-n">—</div><div class="kpi-l">โครงการทั้งหมด</div></div>
         <div class="kpi" id="kpi-req"><div class="kpi-n">—</div><div class="kpi-l">งบที่ขอ (บาท)</div></div>
         <div class="kpi" id="kpi-appr"><div class="kpi-n">—</div><div class="kpi-l">งบที่อนุมัติ (บาท)</div></div>
         <div class="kpi" id="kpi-spent"><div class="kpi-n">—</div><div class="kpi-l">เบิกจ่ายแล้ว (บาท)</div></div>
       </div>
-      <div class="grid-2">
-        <div class="card"><div class="card-title">สถานะโครงการ</div><div id="dash-status" class="mt-16"></div><button class="link-btn mt-12" onclick="nav('projects')">ดูทั้งหมด →</button></div>
-        <div class="card"><div class="card-title">งบประมาณตามหน่วยงาน</div><div id="dash-dept" class="mt-16"></div></div>
+      <!-- Row 1: Status chart + Budget bar -->
+      <div class="grid-2" style="margin-bottom:14px">
+        <div class="card">
+          <div class="card-title">สถานะโครงการ</div>
+          <div style="height:180px;margin-top:12px"><canvas id="chart-status"></canvas></div>
+          <div id="dash-status" class="mt-12"></div>
+          <button class="link-btn mt-12" onclick="nav('projects')">ดูทั้งหมด →</button>
+        </div>
+        <div class="card">
+          <div class="card-title">สรุปงบประมาณ</div>
+          <div style="height:200px;margin-top:12px"><canvas id="chart-budget"></canvas></div>
+        </div>
+      </div>
+      <!-- Row 2: Dept chart full width -->
+      <div class="card">
+        <div class="card-title">งบประมาณตามหน่วยงาน</div>
+        <div style="height:260px;margin-top:12px"><canvas id="chart-dept"></canvas></div>
+        <div id="dash-dept" class="mt-12"></div>
+      </div>
+    </div>
+
+    <!-- BUDGET CONFIG PAGE -->
+    <div id="page-budget-config" class="page hidden">
+      <div class="page-top">
+        <h1>กำหนดวงเงินงบประมาณ</h1>
+        <p class="page-desc">ตั้งค่าวงเงินงบประมาณประจำปี เพื่อแสดงยอดคงเหลือในภาพรวม</p>
+      </div>
+      <div class="card" style="max-width:560px">
+        <div class="card-title mb-14">วงเงินงบประมาณปีงบประมาณ <span id="cfg-year"></span></div>
+        <div id="cfg-current" style="margin-bottom:20px"></div>
+        <div class="field" style="margin-bottom:16px">
+          <label>วงเงินงบประมาณรวมทั้งปี (บาท) <span class="req">*</span></label>
+          <input id="cfg-budget" type="number" min="0" placeholder="เช่น 500000" style="font-size:18px;padding:12px 14px">
+          <span style="font-size:12px;color:#7C8FA8;margin-top:4px">กรอกวงเงินที่ได้รับจัดสรรทั้งปี ระบบจะคำนวณยอดใช้ไปและคงเหลืออัตโนมัติ</span>
+        </div>
+        <div id="cfg-err" class="form-err hidden" style="margin-bottom:12px"></div>
+        <div class="flex-end">
+          <button class="btn-prim" id="btn-cfg-save" onclick="saveBudgetConfig()">💾 บันทึกวงเงิน</button>
+        </div>
       </div>
     </div>
     <!-- PROJECTS -->
     <div id="page-projects" class="page hidden">
       <div class="page-top flex-sb">
         <div><h1>โครงการทั้งหมด</h1><p class="page-desc" id="proj-count">— รายการ</p></div>
-        <button class="btn-prim teacher-only hidden" onclick="nav('form')">+ เสนอโครงการใหม่</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn-sec" onclick="exportCSV()" title="Export CSV">⬇ Export</button>
+          <button class="btn-prim teacher-only hidden" onclick="nav('form')">+ เสนอโครงการใหม่</button>
+        </div>
       </div>
       <div class="toolbar">
         <div class="tab-group" id="status-tabs">
@@ -62,7 +182,34 @@
           <button class="tab" data-s="approved">อนุมัติแล้ว</button>
           <button class="tab" data-s="rejected">ไม่อนุมัติ</button>
         </div>
-        <input id="search" class="search" placeholder="ค้นหา...">
+        <input id="search" class="search" placeholder="🔍 ค้นหาชื่อโครงการ, ครู, หน่วยงาน...">
+      </div>
+      <!-- Advanced filter -->
+      <div class="adv-filter" id="adv-filter">
+        <select id="filter-dept" class="filter-select" onchange="renderProjects()">
+          <option value="">ทุกหน่วยงาน</option>
+          <option>กลุ่มสาระภาษาไทย</option>
+          <option>กลุ่มสาระคณิตศาสตร์</option>
+          <option>กลุ่มสาระวิทยาศาสตร์และเทคโนโลยี</option>
+          <option>กลุ่มสาระสังคมศึกษา</option>
+          <option>กลุ่มสาระภาษาต่างประเทศ</option>
+          <option>กลุ่มสาระศิลปะ</option>
+          <option>กลุ่มสาระสุขศึกษาและพลศึกษา</option>
+          <option>กลุ่มสาระการงานอาชีพ</option>
+          <option>งานวิชาการ</option>
+          <option>งานบุคลากร</option>
+          <option>งานแผนงานและงบประมาณ</option>
+          <option>งานบริหารทั่วไป</option>
+          <option>งานกิจการนักเรียน</option>
+        </select>
+        <select id="filter-sort" class="filter-select" onchange="renderProjects()">
+          <option value="newest">ใหม่สุด</option>
+          <option value="oldest">เก่าสุด</option>
+          <option value="budget-high">งบสูงสุด</option>
+          <option value="budget-low">งบน้อยสุด</option>
+          <option value="name">ชื่อ A-Z</option>
+        </select>
+        <span id="filter-result" class="filter-result"></span>
       </div>
       <div id="proj-list"></div>
     </div>
@@ -363,12 +510,49 @@
       </div>
       <div id="users-table"></div>
     </div>
+    <!-- LOG PAGE -->
+    <div id="page-log" class="page hidden">
+      <div class="page-top flex-sb">
+        <div><h1>ประวัติการใช้งาน</h1><p class="page-desc" id="log-count"></p></div>
+        <button class="btn-sec" onclick="loadLog()">🔄 รีเฟรช</button>
+      </div>
+      <div id="log-body"><div class="loading">กำลังโหลด...</div></div>
+    </div>
   </main>
 </div>
 <div id="toast" class="toast hidden"></div>
+
+<!-- ===== LOGIN MODAL ===== -->
+<div id="login-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-logo">
+        <div class="sb-logo-badge" style="width:52px;height:52px;font-size:16px;flex-shrink:0">ร.ร.</div>
+        <div>
+          <div style="font-size:18px;font-weight:800;color:#fff;line-height:1.2">เข้าสู่ระบบ</div>
+          <div style="font-size:12px;color:#7C8FA8;margin-top:2px">โรงเรียนบ้านคลอง 14 · ระบบงบประมาณ</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="field" style="margin-bottom:16px">
+        <label style="font-size:13px;font-weight:700;color:#374151;margin-bottom:6px;display:block">อีเมลของคุณ</label>
+        <input id="login-email" type="email" placeholder="เช่น teacher@school.ac.th" autocomplete="email"
+          style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #E2E8F0;font-size:14px;font-family:'Sarabun',sans-serif;outline:none"
+          onfocus="this.style.borderColor='#3B82F6'" onblur="this.style.borderColor='#E2E8F0'">
+      </div>
+      <div id="login-err" class="login-err hidden"></div>
+      <button class="btn-login-main" id="btn-login-submit" onclick="doLogin()">เข้าสู่ระบบ</button>
+      <div style="text-align:center;margin-top:14px">
+        <button class="btn-login-guest" onclick="closeLogin()">ดูข้อมูลโดยไม่เข้าสู่ระบบ →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-  const API_URL    = 'https://script.google.com/macros/s/AKfycbxT9XUl3lbSceQThtqN2SOIyHitQeSAGzWh1YSpismq2usRzSSy2MCWatjc5vJwszB9uA/exec';
-  const USER_EMAIL = 'teacher@school.ac.th';
+  const API_URL = 'https://script.google.com/macros/s/AKfycbxT9XUl3lbSceQThtqN2SOIyHitQeSAGzWh1YSpismq2usRzSSy2MCWatjc5vJwszB9uA/exec';
+  let USER_EMAIL = '';
 </script>
 <script src="app.js"></script>
 </body>
