@@ -55,6 +55,29 @@
     <div id="page-dashboard" class="page">
       <div class="page-top"><h1 id="greet">ภาพรวม</h1><p class="page-desc" id="dash-desc">สรุปโครงการและงบประมาณประจำปี</p></div>
 
+      <!-- Teacher Panel (เฉพาะ teacher) -->
+      <div id="teacher-panel" style="display:none">
+        <!-- Action Banner -->
+        <div id="teacher-action-banner" style="display:none"></div>
+        <!-- KPI ครู -->
+        <div class="teacher-kpi-row" id="teacher-kpis"></div>
+        <!-- โครงการของฉัน -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="action-card-head">
+            <div class="action-card-title">📂 โครงการของฉัน</div>
+            <button class="link-btn" onclick="nav('projects')">ดูทั้งหมด →</button>
+          </div>
+          <div id="teacher-proj-list" class="mt-8"></div>
+        </div>
+        <!-- คำขอเบิกล่าสุด -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="action-card-head">
+            <div class="action-card-title">💸 สถานะคำขอเบิกจ่าย</div>
+          </div>
+          <div id="teacher-exp-list" class="mt-8"></div>
+        </div>
+      </div>
+
       <!-- Finance Action Panel (เฉพาะ finance/admin) -->
       <div id="finance-panel" style="display:none">
         <div class="action-panel-grid" id="action-kpis">
@@ -90,6 +113,15 @@
             <span id="badge-approved" class="action-badge ok">—</span>
           </div>
           <div id="list-approved-proj" class="mt-12"></div>
+        </div>
+        <!-- รอหลักฐานจากครู -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="action-card-head">
+            <div class="action-card-title">📎 รายการรอหลักฐาน/ใบเสร็จจากครู</div>
+          </div>
+          <div id="list-pending-docs" class="action-list mt-8">
+            <div class="skel-list"></div>
+          </div>
         </div>
       </div>
 
