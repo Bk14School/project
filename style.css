@@ -708,3 +708,183 @@ input,select,textarea,button{font-family:'Sarabun',sans-serif}
 .action-item-amt{font-size:15px;font-weight:800;color:#1C2333;font-family:'Prompt',sans-serif}
 .action-item-unit{font-size:10px;color:#9CA3AF}
 .action-item-arrow{font-size:14px;color:#9CA3AF;margin-top:2px}
+
+/* ============================================================ TEACHER DASHBOARD */
+.teacher-banner{
+  background:linear-gradient(135deg,#EFF6FF,#F0FDF4);
+  border:1.5px solid #BFDBFE;border-radius:12px;
+  padding:14px 18px;margin-bottom:16px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.teacher-banner-item{font-size:13px;color:#1C2333;font-weight:500}
+.teacher-banner-item b{color:#2563EB}
+
+.teacher-kpi-row{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:12px;margin-bottom:16px;
+}
+@media(max-width:600px){.teacher-kpi-row{grid-template-columns:repeat(2,1fr)}}
+.t-kpi{
+  background:#fff;border-radius:12px;padding:14px 16px;
+  box-shadow:0 1px 3px rgba(0,0,0,.06);
+  border-top:3px solid var(--c,#3B82F6);cursor:default;
+}
+.t-kpi-n{font-size:26px;font-weight:800;color:var(--c,#3B82F6);font-family:'Prompt',sans-serif;line-height:1}
+.t-kpi-l{font-size:11px;color:#7C8FA8;margin-top:4px;font-weight:600}
+
+.teacher-proj-item{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:12px 0;border-bottom:1px solid #EEF0F4;cursor:pointer;transition:background .1s;
+}
+.teacher-proj-item:last-child{border-bottom:none}
+.teacher-proj-item:hover{background:#F8FAFF;margin:0 -8px;padding:12px 8px;border-radius:8px}
+.teacher-proj-left{flex:1;min-width:0}
+.teacher-proj-name{font-size:14px;font-weight:700;color:#1C2333;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.teacher-proj-action{font-size:11px;color:#7C8FA8;margin-bottom:4px}
+.teacher-proj-right{text-align:right;flex-shrink:0}
+.teacher-prog{display:flex;align-items:center;gap:8px;margin-top:5px}
+.teacher-prog-bar{flex:1;height:5px;background:#EEF0F4;border-radius:99px;overflow:hidden;min-width:60px}
+
+.teacher-exp-item{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0;border-bottom:1px solid #EEF0F4;
+}
+.teacher-exp-item:last-child{border-bottom:none}
+
+/* ============================================================ FILE UPLOAD */
+.file-upload-area{
+  border:2px dashed #CBD5E1;border-radius:10px;
+  padding:20px;text-align:center;cursor:pointer;
+  transition:border-color .2s,background .2s;
+  display:flex;align-items:center;justify-content:center;
+  min-height:72px;font-size:13px;color:#7C8FA8;
+  background:#FAFBFC;
+}
+.file-upload-area:hover{border-color:#3B82F6;background:#EFF6FF;color:#3B82F6}
+.file-link{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:12px;color:#3B82F6;text-decoration:none;
+  font-weight:600;margin-top:4px;
+  padding:2px 8px;background:#EFF6FF;border-radius:4px;
+}
+.file-link:hover{background:#DBEAFE}
+
+/* ============================================================ BUDGET VALIDATION */
+.budget-remain-hint{
+  font-size:12px;color:#374151;padding:8px 12px;
+  background:#F8F9FB;border-radius:8px;margin-bottom:8px;
+  display:flex;align-items:center;gap:8px;
+}
+.warn-chip{
+  font-size:10px;font-weight:700;padding:2px 7px;
+  border-radius:99px;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;
+}
+.warn-chip.yellow{background:#FFFBEB;color:#D97706;border-color:#FDE68A}
+.req-amt-warn{
+  font-size:11px;margin-top:4px;padding:5px 8px;
+  border-radius:6px;background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;
+}
+
+/* ============================================================ CONDITIONAL APPROVE */
+.btn-cond-approve{
+  background:#FFFBEB;color:#92400E;border:1.5px solid #FCD34D;
+  padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;
+  cursor:pointer;font-family:'Sarabun',sans-serif;transition:background .15s;
+}
+.btn-cond-approve:hover{background:#FEF3C7}
+.btn-cond-approve:disabled{opacity:.6;cursor:not-allowed}
+
+.cond-approve-form{
+  margin-top:10px;padding:12px 14px;
+  background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:8px;
+}
+
+/* ============================================================ DOC STATUS */
+.doc-deadline-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11px;font-weight:700;padding:3px 8px;
+  border-radius:99px;margin-top:4px;
+  background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;
+}
+.doc-deadline-chip.overdue{
+  background:#FEF2F2;color:#DC2626;border-color:#FECACA;
+  animation:pulse-red 1.5s ease-in-out infinite;
+}
+@keyframes pulse-red{0%,100%{opacity:1}50%{opacity:.7}}
+
+.doc-status-chip{
+  font-size:10px;font-weight:700;padding:2px 7px;
+  border-radius:99px;display:inline-block;
+}
+.doc-status-chip.pending  {background:#FFFBEB;color:#92400E;border:1px solid #FDE68A}
+.doc-status-chip.uploaded {background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE}
+
+.no-doc-chip{
+  display:inline-block;font-size:11px;color:#9CA3AF;
+  padding:2px 7px;background:#F3F4F6;border-radius:99px;margin-top:3px;
+}
+
+/* ============================================================ UPLOAD DOC BOX */
+.upload-doc-box{
+  margin-top:10px;padding:12px 14px;
+  background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:8px;
+}
+
+/* ============================================================ FIXES */
+/* ให้ปุ่มในคำขอเบิก wrap ได้ บนจอเล็ก */
+.exp-req-actions{
+  display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;
+  padding-top:10px;border-top:1px solid #EEF0F4;
+}
+/* ปุ่มอนุมัติมีเงื่อนไข — สีเหลืองชัดขึ้น */
+.btn-cond-approve{
+  background:#FFFBEB;color:#92400E;
+  border:1.5px solid #F59E0B;
+  padding:7px 14px;border-radius:8px;
+  font-size:13px;font-weight:700;
+  cursor:pointer;font-family:'Sarabun',sans-serif;
+  transition:background .15s;white-space:nowrap;
+}
+.btn-cond-approve:hover{background:#FEF3C7;border-color:#D97706}
+.btn-cond-approve:disabled{opacity:.6;cursor:not-allowed}
+/* ตาราง note ไม่ให้ยาวเกิน */
+.data-table td{vertical-align:middle}
+
+/* ============================================================ DOC UPLOAD IMPROVED */
+.exp-req-card.needs-doc{
+  border-left:4px solid #F59E0B;
+  box-shadow:0 0 0 1.5px #FDE68A;
+}
+.doc-pending-banner{
+  background:linear-gradient(135deg,#FFFBEB,#FEF3C7);
+  border:1.5px solid #FCD34D;border-radius:10px;
+  padding:12px 16px;margin-bottom:12px;
+  font-size:13px;color:#78350F;line-height:1.6;
+}
+.upload-doc-box{
+  margin-top:12px;padding:14px 16px;
+  background:#FFF7ED;border:1.5px solid #FED7AA;
+  border-radius:10px;
+}
+.upload-doc-title{
+  font-size:13px;font-weight:700;color:#92400E;
+  margin-bottom:6px;display:flex;align-items:center;gap:10px;
+  flex-wrap:wrap;
+}
+.upload-doc-deadline{
+  font-size:11px;font-weight:600;padding:2px 8px;
+  border-radius:99px;background:#FEF9EE;color:#D97706;
+  border:1px solid #FDE68A;
+}
+.upload-doc-deadline.overdue{
+  background:#FEF2F2;color:#DC2626;border-color:#FECACA;
+}
+/* file upload area improvements */
+.file-upload-area{
+  border:2px dashed #FCA46A;border-radius:10px;
+  padding:16px;text-align:center;cursor:pointer;
+  transition:all .2s;min-height:80px;
+  display:flex;align-items:center;justify-content:center;
+  background:#FFFBF5;
+}
+.file-upload-area:hover{border-color:#F59E0B;background:#FEF9EE}
